@@ -1,0 +1,10 @@
+# Folders to ignore
+.cursor/
+.taskmaster/
+
+# Python cache files
+__pycache__/
+*.pyc
+
+# Environment variables
+.env

@@ -1,0 +1,285 @@
+---
+title: "openHPI Annual Stats Report"
+author: "openHPI Content (SG)"
+date: '07-08-2024'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(formattable)
+
+library(ggplot2)
+
+library(dplyr)
+
+library(ggpubr)
+
+library(plyr)
+
+```
+
+# Enrollments in the year 2023
+
+```{r load data, warning=FALSE, error=FALSE, echo=FALSE}
+
+data_2023 <- read.csv("C:/Users/siddh/Desktop/openHPI/reports/CombinedCourseReport_reporting_2023_2024-08-07.csv")
+
+# Convert all column names to lower case and replace spaces with underscores
+colnames(data_2023) <- tolower(colnames(data_2023))
+                            
+colnames(data_2023) <- gsub(x = colnames(data_2023), pattern = "\\.", replacement = "_")           
+
+cat("Total enrollments recorded in 2023:", length(data_2023$user_pseudo_id), "\n\n")
+
+# Filter the data for the year 2023 and not un-enrolled
+data_2023 <- data_2023[data_2023$enrollment_date < "2023-12-31T23:59:59+00:00",]
+data_2023 <- data_2023[data_2023$un_enrolled != "true",]
+
+# Initialize the course_language column
+data_2023$course_language <- NA
+
+# Define the mapping of course codes to languages dynamically
+course_language_map <- data_2023 %>%
+  select(course_code, language) %>%
+  distinct()
+
+# Assign course_language based on the mapping
+for (i in seq_along(course_language_map$course_code)) {
+  data_2023$course_language[data_2023$course_code == course_language_map$course_code[i]] <- course_language_map$language[i]
+}
+
+# Further processing...
+cat("Net overall enrollments recorded in 2023:", nrow(data_2023), "\n\n")
+data_2023_de <- data_2023[data_2023$course_language == "de",]
+data_2023_en <- data_2023[data_2023$course_language == "en",]
+cat("Net enrollments for German-medium Courses recorded in 2023:", nrow(data_2023_de), "\n\n")
+cat("Net enrollments for English-medium Courses recorded in 2023:", nrow(data_2023_en), "\n\n")
+
+# Generate data frames for course enrollments
+courses <- as.data.frame(table(factor(data_2023$course_code)))
+courses_de <- as.data.frame(table(factor(data_2023_de$course_code)))
+courses_en <- as.data.frame(table(factor(data_2023_en$course_code)))
+
+# Rename columns
+colnames(courses) <- c("course_code", "enrollments")
+colnames(courses_de) <- c("course_code", "enrollments")
+colnames(courses_en) <- c("course_code", "enrollments")
+courses <- courses[order(courses$enrollments),]
+
+courses_de <- courses_de[order(courses_de$enrollments),]
+
+courses_en <- courses_en[order(courses_en$enrollments),]
+
+cat("Active German-medium courses in year 2023:\n\n")
+
+print.data.frame(courses_de, row.names = F)
+
+cat("\n\nActive English-medium courses in year 2023:\n\n")
+
+print.data.frame(courses_en, row.names = F)
+
+```
+## Top 5 courses in terms of net enrollments - 2023.
+
+```{r top-5-enroll, warning=FALSE, error=FALSE, echo=FALSE}
+
+p1 <- ggplot(data=tail(courses, 5), aes(x=reorder(course, enrollments), y=enrollments)) +
+  geom_bar(stat="identity", fill="steelblue") + theme(axis.text.x=element_text(angle=30, hjust=1)) + geom_text(aes(label=enrollments), position=position_dodge(width=0.9), vjust=-0.25, size=2) + ggtitle("Top 5 courses-overall in year 2023 (net enrollments)") + xlab("Active Courses in 2023") + ylab("Net Enrollments")
+
+show(p1)
+
+p2 <- ggplot(data=tail(courses_de, 5), aes(x=reorder(course, enrollments), y=enrollments)) +
+  geom_bar(stat="identity", fill="steelblue") + theme(axis.text.x=element_text(angle=30, hjust=1)) + geom_text(aes(label=enrollments), position=position_dodge(width=0.9), vjust=-0.25, size=2) + ggtitle("Top 5 German-medium courses-overall in year 2023 (net enrollments)") + xlab("Active DE Courses in 2023") + ylab("Net Enrollments")
+
+show(p2)
+
+p3 <- ggplot(data=tail(courses_en, 5), aes(x=reorder(course, enrollments), y=enrollments)) +
+  geom_bar(stat="identity", fill="steelblue") + theme(axis.text.x=element_text(angle=30, hjust=1)) + geom_text(aes(label=enrollments), position=position_dodge(width=0.9), vjust=-0.25, size=2) + ggtitle("Top 5 English-medium courses in year 2023 (net enrollments)") + xlab("Active EN Courses in 2023") + ylab("Net Enrollments")
+
+show(p3)
+
+```
+
+# Certificates
+
+```{r certificates, warning=FALSE, error=FALSE, echo=FALSE}
+
+course_cop <- data_2023[data_2023$confirmation_of_participation == "true",]
+
+course_roa <- data_2023[data_2023$record_of_achievement == "true",]
+
+course_qc <- data_2023[data_2023$qualified_certificate == "true",]
+
+certificates <- data_frame(c("COP", "ROA", "QC"), c(length(course_cop$user_pseudo_id), length(course_roa$user_pseudo_id), length(course_qc$user_pseudo_id)))
+
+colnames(certificates) <- c("Certificate", "Learners")
+
+print.data.frame(certificates, row.names = F)
+
+cat("\n\nTotal Number of certificates acheived by learners", ( length(course_roa$user_pseudo_id)+length(course_qc$user_pseudo_id)), "\n\n")
+ 
+cat("Total Number of certificates for German-medium courses recorded in 2023:", ( length(course_roa[course_roa$course_language == "de",]$user_pseudo_id)+length(course_qc[course_qc$course_language == "de",]$user_pseudo_id)), "\n\n")
+
+cat("Total Number of certificates for English-medium courses recorded in 2023:", ( length(course_roa[course_roa$course_language == "en",]$user_pseudo_id)+length(course_qc[course_qc$course_language == "en",]$user_pseudo_id)), "\n\n")
+
+```
+## Top 5 courses in terms of certificates - 2023.
+
+```{r top-5-cert, warning=FALSE, error=FALSE, echo=FALSE}
+
+cert_all_cop <- data_2023[data_2023$confirmation_of_participation == "true",]
+
+cert_all_roa <- data_2023[data_2023$record_of_achievement == "true",]
+
+cert_all_qc <- data_2023[data_2023$qualified_certificate == "true",]
+
+cert_de_cop <- data_2023_de[data_2023_de$confirmation_of_participation == "true",]
+
+cert_de_roa <- data_2023_de[data_2023_de$record_of_achievement == "true",]
+
+cert_de_qc <- data_2023_de[data_2023_de$qualified_certificate == "true",]
+
+cert_en_cop <- data_2023_en[data_2023_en$confirmation_of_participation == "true",]
+
+cert_en_roa <- data_2023_en[data_2023_en$record_of_achievement == "true",]
+
+cert_en_qc <- data_2023_en[data_2023_en$qualified_certificate == "true",]
+
+courses <- data_frame(levels(factor(data_2023$course_code)), c(NA))
+
+colnames(courses) <- c("course", "certificates")
+
+for(i in courses$course){
+  
+   courses$certificates[courses$course == i] <- length(cert_all_roa$user_pseudo_id[cert_all_roa$course_code == i])+length(cert_all_qc$user_pseudo_id[cert_all_qc$course_code == i])
+  
+}
+
+courses <- courses[order(courses$certificates),]
+
+p1 <- ggplot(data=tail(courses, 5), aes(x=reorder(course, certificates), y=certificates)) +
+  geom_bar(stat="identity", fill="steelblue") + theme(axis.text.x=element_text(angle=30, hjust=1)) + geom_text(aes(label=certificates), position=position_dodge(width=0.9), vjust=-0.25, size=2) + ggtitle("Top 5 courses-overall in year 2023 (certificates)") + xlab("Active Courses in 2023") + ylab("No. of certificates")
+
+show(p1)
+
+
+courses_de <- data_frame(levels(factor(data_2023_de$course_code)), c(NA))
+
+colnames(courses_de) <- c("course", "certificates")
+
+for(i in courses$course){
+  
+   courses_de$certificates[courses_de$course == i] <- length(cert_de_roa$user_pseudo_id[cert_de_roa$course_code == i])+length(cert_de_qc$user_pseudo_id[cert_de_qc$course_code == i])
+  
+}
+
+courses_de <- courses_de[order(courses_de$certificates),]
+
+p2 <- ggplot(data=tail(courses_de, 5), aes(x=reorder(course, certificates), y=certificates)) +
+  geom_bar(stat="identity", fill="steelblue") + theme(axis.text.x=element_text(angle=30, hjust=1)) + geom_text(aes(label=certificates), position=position_dodge(width=0.9), vjust=-0.25, size=2) + ggtitle("Top 5 German-medium courses-overall in year 2023 (certificates)") + xlab("Active DE Courses in 2023") + ylab("No. of certificates")
+
+show(p2)
+
+
+courses_en <- data_frame(levels(factor(data_2023_en$course_code)), c(NA))
+
+colnames(courses_en) <- c("course", "certificates")
+
+for(i in courses$course){
+  
+   courses_en$certificates[courses_en$course == i] <- length(cert_en_roa$user_pseudo_id[cert_en_roa$course_code == i])+length(cert_en_qc$user_pseudo_id[cert_en_qc$course_code == i])
+  
+}
+
+courses_en <- courses_en[order(courses_en$certificates),]
+
+p3 <- ggplot(data=tail(courses_en, 5), aes(x=reorder(course, certificates), y=certificates)) +
+  geom_bar(stat="identity", fill="steelblue") + theme(axis.text.x=element_text(angle=30, hjust=1)) + geom_text(aes(label=certificates), position=position_dodge(width=0.9), vjust=-0.25, size=2) + ggtitle("Top 5 English-medium courses in year 2023 (certificates)") + xlab("Active EN Courses in 2023") + ylab("No. of certificates")
+
+show(p3)
+
+```
+# Completions
+
+```{r completions, warning=FALSE, error=FALSE, echo=FALSE}
+
+course_com_all <- data_2023[data_2023$course_completed == "true",]
+
+course_com_de <- data_2023_de[data_2023_de$course_completed == "true",]
+
+course_com_en <- data_2023_en[data_2023_en$course_completed == "true",]
+
+courses_tot <- as.data.frame(table(factor(data_2023$course_code)))
+
+courses_de_tot  <- as.data.frame(table(factor(data_2023_de$course_code)))
+
+courses_en_tot  <- as.data.frame(table(factor(data_2023_en$course_code)))
+
+colnames(courses_tot) <- c("course", "enrollments")
+
+colnames(courses_de_tot) <- c("course", "enrollments")
+
+colnames(courses_en_tot) <- c("course", "enrollments")
+
+courses <- as.data.frame(table(factor(course_com_all$course_code)))
+
+courses_de  <- as.data.frame(table(factor(course_com_de$course_code)))
+
+courses_en  <- as.data.frame(table(factor(course_com_en$course_code)))
+
+colnames(courses) <- c("course", "completions")
+
+colnames(courses_de) <- c("course", "completions")
+
+colnames(courses_en) <- c("course", "completions")
+
+courses <- transform(courses, rate = (completions / courses_tot$enrollments)*100)
+
+courses_de <- transform(courses_de, rate = (completions / courses_de_tot$enrollments)*100)
+
+courses_en <- transform(courses_en, rate = (completions / courses_en_tot$enrollments)*100)
+
+courses <- courses[order(courses$rate),]
+
+courses_de <- courses_de[order(courses_de$rate),]
+
+courses_en <- courses_en[order(courses_en$rate),]
+
+cat("Overall course completion rate recorded in 2023:", (length(course_com_all$user_pseudo_id)/length(data_2023$user_pseudo_id))*100, "\n\n")
+ 
+cat("Course completion rate for German-medium Courses recorded in 2023:", (length(course_com_de$user_pseudo_id)/length(data_2023_de$user_pseudo_id))*100, "\n\n")
+
+cat("Course completion rate for English-medium Courses recorded in 2023:", (length(course_com_en$user_pseudo_id)/length(data_2023_en$user_pseudo_id))*100, "\n\n")
+
+cat("Active German-medium courses in year 2023:\n\n")
+
+print.data.frame(courses_de, row.names = F)
+
+cat("\n\nActive English-medium courses in year 2023:\n\n")
+
+print.data.frame(courses_en, row.names = F)
+
+```
+
+## Top 5 courses in terms of completion rate - 2023.
+
+```{r top-5-comp, echo=FALSE}
+
+p1 <- ggplot(data=tail(courses, 5), aes(x=reorder(course, rate), y=rate)) +
+  geom_bar(stat="identity", fill="steelblue") + theme(axis.text.x=element_text(angle=30, hjust=1)) + geom_text(aes(label=rate), position=position_dodge(width=0.9), vjust=-0.25, size=2) + ggtitle("Top 5 courses-overall in year 2023 (completion rate)") + xlab("Active Courses in 2023") + ylab("Completion rate")
+
+show(p1)
+
+p2 <- ggplot(data=tail(courses_de, 5), aes(x=reorder(course, rate), y=rate)) +
+  geom_bar(stat="identity", fill="steelblue") + theme(axis.text.x=element_text(angle=30, hjust=1)) + geom_text(aes(label=rate), position=position_dodge(width=0.9), vjust=-0.25, size=2) + ggtitle("Top 5 German-medium courses-overall in year 2023 (completion rate))") + xlab("Active DE Courses in 2023") + ylab("Completion rate")
+
+show(p2)
+
+p3 <- ggplot(data=tail(courses_en, 5), aes(x=reorder(course, rate), y=rate)) +
+  geom_bar(stat="identity", fill="steelblue") + theme(axis.text.x=element_text(angle=30, hjust=1)) + geom_text(aes(label=rate), position=position_dodge(width=0.9), vjust=-0.25, size=2) + ggtitle("Top 5 English-medium courses in year 2023 (completion rate)") + xlab("Active EN Courses in 2023") + ylab("Completion rate")
+
+show(p3)
+
+```
