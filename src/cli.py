@@ -126,15 +126,81 @@ app.add_typer(analytics_app, name="analytics")
 
 
 @analytics_app.command("course")
-def analyze_course(course_id: str):
+def analyze_course(
+    years: str = typer.Option(None, help="Comma-separated years to analyze"),
+    categories: str = typer.Option(None, help="Comma-separated categories (e.g., Java,Python)")
+):
     """Analyze course statistics."""
-    console.print(f"[yellow]Course analysis for {course_id} - Coming in Phase 4[/yellow]")
+    from src.models.database import SessionLocal
+    from src.analysis import course_analytics
+    
+    console.print("[bold blue]Analyzing course metrics...[/bold blue]")
+    
+    db = SessionLocal()
+    try:
+        # Parse parameters
+        year_list = [int(y.strip()) for y in years.split(',')] if years else None
+        category_list = [c.strip() for c in categories.split(',')] if categories else None
+        
+        # Get data
+        data = course_analytics.prepare_visualization_data(
+            db=db,
+            years=year_list,
+            categories=category_list
+        )
+        
+        console.print("\n[bold green]✓ Analysis completed![/bold green]")
+        
+        # Display summary
+        if not data['enrollment_filtered'].empty:
+            console.print(f"  Total enrollments: {len(data['enrollment_filtered'])}")
+        
+        if 'certificates' in data and hasattr(data['certificates'], '__len__'):
+            total_certs = sum(data['certificates'].values()) if hasattr(data['certificates'], 'values') else 0
+            console.print(f"  Total certificates: {total_certs}")
+        
+    except Exception as e:
+        console.print(f"[bold red]✗ Analysis failed: {e}[/bold red]")
+        raise typer.Exit(1)
+    finally:
+        db.close()
 
 
 @analytics_app.command("annual")
-def analyze_annual(year: int):
+def analyze_annual(year: int = typer.Argument(..., help="Year to generate report for")):
     """Generate annual statistics report."""
-    console.print(f"[yellow]Annual report for {year} - Coming in Phase 4[/yellow]")
+    from src.models.database import SessionLocal
+    from src.analysis import annual_stats
+    
+    console.print(f"[bold blue]Generating annual report for {year}...[/bold blue]")
+    
+    db = SessionLocal()
+    try:
+        report = annual_stats.generate_annual_report(db=db, year=year)
+        
+        console.print("\n[bold green]✓ Report generated![/bold green]")
+        
+        # Display metrics
+        metrics = report['metrics']
+        table = Table(title=f"Annual Metrics - {year}")
+        table.add_column("Metric", style="cyan")
+        table.add_column("Value", style="white")
+        
+        table.add_row("Total Enrollments", str(metrics['total_enrollments']))
+        table.add_row("German Enrollments", str(metrics['german_enrollments']))
+        table.add_row("English Enrollments", str(metrics['english_enrollments']))
+        table.add_row("Total Certificates", str(metrics['total_certificates']))
+        table.add_row("Overall Completion Rate", f"{metrics['overall_completion_rate']}%")
+        table.add_row("German Completion Rate", f"{metrics['german_completion_rate']}%")
+        table.add_row("English Completion Rate", f"{metrics['english_completion_rate']}%")
+        
+        console.print(table)
+        
+    except Exception as e:
+        console.print(f"[bold red]✗ Report generation failed: {e}[/bold red]")
+        raise typer.Exit(1)
+    finally:
+        db.close()
 
 
 # Automation commands
@@ -143,15 +209,112 @@ app.add_typer(automation_app, name="automate")
 
 
 @automation_app.command("enroll")
-def batch_enroll(course_id: str, users_file: str):
-    """Batch enroll users in a course."""
-    console.print(f"[yellow]Batch enrollment - Coming in Phase 5[/yellow]")
+def batch_enroll(
+    course_id: str = typer.Argument(..., help="Course ID to enroll users in"),
+    users_file: str = typer.Argument(..., help="CSV file with user emails"),
+    headless: bool = typer.Option(True, help="Run browser in headless mode")
+):
+    """Batch enroll users in a course from CSV file."""
+    import pandas as pd
+    from src.services.automation_service import automation_service
+    
+    console.print(f"[bold blue]Starting batch enrollment for course: {course_id}[/bold blue]")
+    
+    try:
+        # Read users from CSV
+        df = pd.read_csv(users_file)
+        if 'email' not in df.columns:
+            console.print("[red]Error: CSV must have 'email' column[/red]")
+            raise typer.Exit(1)
+        
+        users = df['email'].tolist()
+        console.print(f"Found {len(users)} users to enroll")
+        
+        # Perform enrollment
+        result = automation_service.batch_enroll_users(
+            users=users,
+            course_id=course_id,
+            headless=headless
+        )
+        
+        # Display results
+        console.print(f"\n[bold green]✓ Enrollment completed![/bold green]")
+        console.print(f"  Enrolled: {len(result['enrolled'])}")
+        console.print(f"  Unregistered: {len(result['unregistered'])}")
+        
+        if result['unregistered']:
+            console.print("\n[yellow]Unregistered users:[/yellow]")
+            for email in result['unregistered']:
+                console.print(f"  - {email}")
+        
+    except Exception as e:
+        console.print(f"[bold red]✗ Enrollment failed: {e}[/bold red]")
+        raise typer.Exit(1)
 
 
-@automation_app.command("notify")
-def send_notifications():
-    """Send helpdesk notifications."""
-    console.print("[yellow]Notifications - Coming in Phase 5[/yellow]")
+@automation_app.command("notify-helpdesk")
+def notify_helpdesk():
+    """Check helpdesk tickets and send notifications."""
+    from src.services.automation_service import automation_service
+    
+    console.print("[bold blue]Checking helpdesk tickets...[/bold blue]")
+    
+    try:
+        result = automation_service.check_and_notify_helpdesk(headless=True)
+        
+        console.print(f"\n[bold green]✓ Helpdesk check completed![/bold green]")
+        console.print(f"  Total tickets: {result['tickets_count']}")
+        console.print(f"  Telegram notification: {'Sent' if result['notification_sent'] else 'Failed/Skipped'}")
+        console.print(f"  Email notification: {'Sent' if result['email_sent'] else 'Failed/Skipped'}")
+        
+        # Display analysis
+        analysis = result['analysis']
+        console.print("\n[cyan]Ticket Analysis:[/cyan]")
+        console.print(f"  Within 6 hours: {analysis['within_6hrs']}")
+        console.print(f"  Within 12 hours: {analysis['within_12hrs']}")
+        console.print(f"  Within 24 hours: {analysis['within_24hrs']}")
+        console.print(f"  Within 48 hours: {analysis['within_48hrs']}")
+        
+    except Exception as e:
+        console.print(f"[bold red]✗ Helpdesk check failed: {e}[/bold red]")
+        raise typer.Exit(1)
+
+
+@automation_app.command("update-page")
+def update_page(
+    page_name: str = typer.Argument(..., help="Name of the page to update"),
+    content_file: str = typer.Argument(..., help="File containing new page content"),
+    headless: bool = typer.Option(True, help="Run browser in headless mode")
+):
+    """Update page content on OpenHPI platform."""
+    from src.services.automation_service import automation_service
+    
+    console.print(f"[bold blue]Updating page: {page_name}[/bold blue]")
+    
+    try:
+        # Read content from file
+        with open(content_file, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        # Update page
+        success = automation_service.update_page(
+            page_name=page_name,
+            content=content,
+            headless=headless
+        )
+        
+        if success:
+            console.print(f"[bold green]✓ Page '{page_name}' updated successfully![/bold green]")
+        else:
+            console.print(f"[bold red]✗ Failed to update page[/bold red]")
+            raise typer.Exit(1)
+        
+    except FileNotFoundError:
+        console.print(f"[red]Error: Content file '{content_file}' not found[/red]")
+        raise typer.Exit(1)
+    except Exception as e:
+        console.print(f"[bold red]✗ Page update failed: {e}[/bold red]")
+        raise typer.Exit(1)
 
 
 if __name__ == "__main__":
