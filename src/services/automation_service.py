@@ -8,6 +8,7 @@ This module provides automation functionality ported from the original scripts:
 """
 
 import asyncio
+import logging
 from datetime import datetime, date
 from typing import List, Dict, Optional
 from selenium import webdriver
@@ -27,6 +28,9 @@ import numpy as np
 
 from src.core.config import settings
 from src.models.tables import HelpdeskTicket
+
+
+logger = logging.getLogger(__name__)
 
 
 class AutomationService:
@@ -105,7 +109,7 @@ class AutomationService:
             
             return True
         except Exception as e:
-            print(f"Login failed: {str(e)}")
+            logger.error("Login failed: {str(e)}")
             return False
     
     def batch_enroll_users(
@@ -171,7 +175,7 @@ class AutomationService:
                         # Check if already enrolled
                         try:
                             driver.find_element(By.LINK_TEXT, "Enter course")
-                            print(f"{email} is already enrolled.")
+                            logger.info(f"{email} is already enrolled.")
                         except NoSuchElementException:
                             # Enroll user
                             enroll_btn = wait.until(
@@ -191,12 +195,12 @@ class AutomationService:
                         driver.get(f"{self.settings.openhpi_base_url}/users")
                         
                     except Exception as e:
-                        print(f"User {email} not found or error: {str(e)}")
+                        logger.warning(f"User {email} not found or error: {str(e)}")
                         unregistered_emails.append(email)
                         driver.get(f"{self.settings.openhpi_base_url}/users")
                         
                 except Exception as e:
-                    print(f"Error processing {email}: {str(e)}")
+                    logger.error(f"Error processing {email}: {str(e)}")
                     unregistered_emails.append(email)
         
         finally:
@@ -241,7 +245,7 @@ class AutomationService:
             
             return True
         except Exception as e:
-            print(f"Helpdesk login failed: {str(e)}")
+            logger.error("Helpdesk login failed: {str(e)}")
             return False
     
     def check_and_notify_helpdesk(self, headless: bool = True) -> Dict[str, any]:
@@ -306,7 +310,7 @@ class AutomationService:
                             'owner': owner if owner else 'Not Assigned'
                         })
                     except Exception as e:
-                        print(f"Error extracting ticket data: {str(e)}")
+                        logger.error(f"Error extracting ticket data: {str(e)}")
             
             # Analyze tickets
             analysis = self._analyze_tickets(tickets_data)
@@ -426,7 +430,7 @@ Tickets by Owner:
             
             return True
         except Exception as e:
-            print(f"Failed to send Telegram notification: {str(e)}")
+            logger.error(f"Failed to send Telegram notification: {str(e)}")
             return False
     
     def _send_email_notification(self, tickets: List[Dict]) -> bool:
@@ -476,7 +480,7 @@ Tickets by Owner:
             
             return True
         except Exception as e:
-            print(f"Failed to send email: {str(e)}")
+            logger.error(f"Failed to send email: {str(e)}")
             return False
     
     def update_page(
@@ -530,11 +534,11 @@ Tickets by Owner:
                 
                 return True
             else:
-                print("No editor found on page")
+                logger.warning("No editor found on page")
                 return False
         
         except Exception as e:
-            print(f"Failed to update page: {str(e)}")
+            logger.error(f"Failed to update page: {str(e)}")
             return False
         
         finally:
