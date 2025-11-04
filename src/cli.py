@@ -85,9 +85,27 @@ app.add_typer(scrape_app, name="scrape")
 
 
 @scrape_app.command("courses")
-def scrape_courses():
+def scrape_courses_cmd():
     """Scrape course data from OpenHPI."""
-    console.print("[yellow]This command will be implemented in Phase 3[/yellow]")
+    from src.models.database import SessionLocal
+    from src.services.scraping_service import scrape_courses
+    
+    console.print("[bold blue]Starting course scraping...[/bold blue]")
+    
+    db = SessionLocal()
+    try:
+        result = scrape_courses(db)
+        
+        console.print(f"\n[bold green]✓ Scraping completed successfully![/bold green]")
+        console.print(f"  Courses scraped: {result['courses_scraped']}")
+        console.print(f"  Courses saved: {result['courses_saved']}")
+        console.print(f"  Job ID: {result['job_id']}")
+        
+    except Exception as e:
+        console.print(f"[bold red]✗ Scraping failed: {e}[/bold red]")
+        raise typer.Exit(1)
+    finally:
+        db.close()
 
 
 @scrape_app.command("dashboard")
