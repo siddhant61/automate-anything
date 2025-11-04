@@ -9,7 +9,7 @@ These models represent the data currently stored in various CSV files:
 - Helpdesk tickets (from helpdesk_notifier.py)
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from sqlalchemy import (
     Boolean, Column, DateTime, Float, ForeignKey, Integer, 
@@ -18,6 +18,11 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship
 
 from .database import Base
+
+
+def utcnow():
+    """Return current UTC time as timezone-aware datetime."""
+    return datetime.now(timezone.utc)
 
 
 class Course(Base):
@@ -33,8 +38,8 @@ class Course(Base):
     end_date = Column(Date)
     language = Column(String)
     category = Column(String)  # e.g., "Java", "Python", "Quantum Computing"
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
     
     # Relationships
     stats = relationship("CourseStats", back_populates="course", cascade="all, delete-orphan")
@@ -61,7 +66,7 @@ class CourseStats(Base):
     ungraded_quiz_performance = Column(Float)
     
     # Metadata
-    recorded_at = Column(DateTime, default=datetime.utcnow)
+    recorded_at = Column(DateTime, default=utcnow)
     year = Column(Integer)
     
     # Raw data from scraper (flexible for additional fields)
@@ -80,7 +85,7 @@ class User(Base):
     username = Column(String, unique=True, index=True)
     full_name = Column(String)
     is_registered = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
     
     # Relationships
     enrollments = relationship("Enrollment", back_populates="user", cascade="all, delete-orphan")
@@ -95,7 +100,7 @@ class Enrollment(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     course_id = Column(String, ForeignKey("courses.course_id"), nullable=False)
     
-    enrollment_date = Column(DateTime, default=datetime.utcnow)
+    enrollment_date = Column(DateTime, default=utcnow)
     status = Column(String, default="enrolled")  # enrolled, completed, dropped
     
     # Completion data
@@ -148,7 +153,7 @@ class SurveyResponse(Base):
     survey_type = Column(String)  # teacher, student, end-of-course
     response_data = Column(JSON)  # Flexible storage for survey responses
     
-    submitted_at = Column(DateTime, default=datetime.utcnow)
+    submitted_at = Column(DateTime, default=utcnow)
 
 
 class HelpdeskTicket(Base):
@@ -166,8 +171,8 @@ class HelpdeskTicket(Base):
     ticket_url = Column(String)
     
     # Metadata
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
 
 
 class ScrapingJob(Base):
@@ -178,7 +183,7 @@ class ScrapingJob(Base):
     job_type = Column(String, nullable=False)  # course_data, dashboard_stats, helpdesk
     status = Column(String, default="pending")  # pending, running, completed, failed
     
-    started_at = Column(DateTime, default=datetime.utcnow)
+    started_at = Column(DateTime, default=utcnow)
     completed_at = Column(DateTime)
     
     records_processed = Column(Integer, default=0)
