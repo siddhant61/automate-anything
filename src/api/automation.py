@@ -16,7 +16,7 @@ router = APIRouter()
 
 class EnrollmentRequest(BaseModel):
     """Request model for batch enrollment."""
-    users: List[str] = Field(..., description="List of user email addresses", min_items=1)
+    users: List[str] = Field(..., description="List of user email addresses", min_length=1)
     course_id: str = Field(..., description="Course identifier")
     headless: bool = Field(default=True, description="Run browser in headless mode")
 
