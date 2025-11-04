@@ -2,11 +2,24 @@
 Main FastAPI application entry point.
 """
 
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.core.config import settings
 from src.models.database import init_db
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan manager."""
+    # Startup
+    init_db()
+    print("✓ Database initialized")
+    print(f"✓ Running in {settings.env} mode")
+    yield
+    # Shutdown (if needed in the future)
+
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -14,6 +27,7 @@ app = FastAPI(
     description="A unified API for OpenHPI course management, analytics, and automation",
     version="0.1.0",
     debug=settings.debug,
+    lifespan=lifespan,
 )
 
 # Add CORS middleware
@@ -24,14 +38,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.on_event("startup")
-async def startup_event():
-    """Initialize database on startup."""
-    init_db()
-    print("✓ Database initialized")
-    print(f"✓ Running in {settings.env} mode")
 
 
 @app.get("/")

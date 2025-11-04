@@ -14,6 +14,7 @@ from bs4 import BeautifulSoup
 from sqlalchemy.orm import Session
 
 from src.core.config import settings
+from src.core.utils import utcnow
 from src.models.tables import Course, CourseStats, ScrapingJob
 
 logger = logging.getLogger(__name__)
@@ -176,7 +177,7 @@ class OpenHPIScraper:
                     course.description = data.get('description', course.description)
                     course.url = data.get('url', course.url)
                     course.language = data.get('language', course.language)
-                    course.updated_at = datetime.utcnow()
+                    course.updated_at = utcnow()
                 else:
                     # Create new course
                     course = Course(
@@ -215,7 +216,7 @@ class OpenHPIScraper:
         job = ScrapingJob(
             job_type="course_list",
             status="running",
-            started_at=datetime.utcnow()
+            started_at=utcnow()
         )
         self.db.add(job)
         self.db.commit()
@@ -229,7 +230,7 @@ class OpenHPIScraper:
             
             # Update job status
             job.status = "completed"
-            job.completed_at = datetime.utcnow()
+            job.completed_at = utcnow()
             job.records_processed = saved_count
             self.db.commit()
             
@@ -243,7 +244,7 @@ class OpenHPIScraper:
         except Exception as e:
             # Update job with error
             job.status = "failed"
-            job.completed_at = datetime.utcnow()
+            job.completed_at = utcnow()
             job.error_message = str(e)
             self.db.commit()
             
