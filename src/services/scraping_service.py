@@ -7,19 +7,15 @@ Uses requests.Session() for authenticated scraping and BeautifulSoup4 for parsin
 
 import logging
 from typing import List, Dict, Optional
-from datetime import datetime, timezone
+from datetime import datetime
 
 import requests
 from bs4 import BeautifulSoup
 from sqlalchemy.orm import Session
 
 from src.core.config import settings
+from src.core.utils import utcnow
 from src.models.tables import Course, CourseStats, ScrapingJob
-
-
-def utcnow():
-    """Return current UTC time as timezone-aware datetime."""
-    return datetime.now(timezone.utc)
 
 logger = logging.getLogger(__name__)
 

@@ -9,7 +9,7 @@ These models represent the data currently stored in various CSV files:
 - Helpdesk tickets (from helpdesk_notifier.py)
 """
 
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional
 from sqlalchemy import (
     Boolean, Column, DateTime, Float, ForeignKey, Integer, 
@@ -18,11 +18,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship
 
 from .database import Base
-
-
-def utcnow():
-    """Return current UTC time as timezone-aware datetime."""
-    return datetime.now(timezone.utc)
+from src.core.utils import utcnow
 
 
 class Course(Base):
