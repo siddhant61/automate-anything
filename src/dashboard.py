@@ -25,7 +25,10 @@ st.set_page_config(
 )
 
 # API Configuration
-API_BASE_URL = st.secrets.get("API_BASE_URL", "http://localhost:8000")
+try:
+    API_BASE_URL = st.secrets.get("API_BASE_URL", "http://localhost:8000")
+except:
+    API_BASE_URL = "http://localhost:8000"
 
 
 def check_api_health() -> bool:
