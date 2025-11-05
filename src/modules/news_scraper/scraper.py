@@ -44,18 +44,23 @@ class HackerNewsScraper:
             'User-Agent': 'Data-Pipeline-Platform/1.0 (Educational Purpose)'
         })
     
-    def scrape_front_page(self) -> List[Dict]:
+    def scrape_front_page(self, html: str = None) -> List[Dict]:
         """
         Scrape the Hacker News front page for headlines.
+        
+        Args:
+            html: Optional pre-fetched HTML content. If None, will fetch from base_url.
         
         Returns:
             List[Dict]: List of news items with title, url, points, etc.
         """
         try:
-            response = self.session.get(self.base_url, timeout=30)
-            response.raise_for_status()
+            if html is None:
+                response = self.session.get(self.base_url, timeout=30)
+                response.raise_for_status()
+                html = response.text
             
-            soup = BeautifulSoup(response.text, 'html.parser')
+            soup = BeautifulSoup(html, 'html.parser')
             
             # Hacker News uses a table structure for posts
             news_items = []
@@ -227,7 +232,8 @@ class HackerNewsScraper:
             response.raise_for_status()
             raw_html = response.text
             
-            news_items = self.scrape_front_page()
+            # Parse the HTML (pass it to avoid redundant fetch)
+            news_items = self.scrape_front_page(html=raw_html)
             
             # Save to generic tables
             save_result = self.save_to_generic_tables(source, news_items, raw_html)

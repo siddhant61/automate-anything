@@ -6,8 +6,11 @@ It demonstrates the platform's generic analysis pipeline capabilities.
 """
 
 import logging
+import json
 from typing import Dict, List, Optional
 from sqlalchemy.orm import Session
+
+import langfun as lf
 
 from src.models.tables import ProcessedData, ScrapedData
 from src.services.ai_service import AIService
@@ -80,8 +83,6 @@ def analyze_headlines(db: Session, scraped_data_id: int) -> Dict:
             
             # Use AI to analyze sentiment
             # We'll ask Gemini to classify sentiment and provide a score
-            import langfun as lf
-            
             prompt = f"""Analyze the sentiment of this news headline: "{headline}"
 
 Respond with ONLY a JSON object in this format:
@@ -102,7 +103,6 @@ Where score ranges from:
                 )
                 
                 # Parse the response
-                import json
                 response_str = str(response).strip()
                 
                 # Try to extract JSON from the response
