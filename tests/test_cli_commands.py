@@ -601,7 +601,9 @@ class TestUserCommands:
         import tempfile
         import os
         
-        temp_file = tempfile.mktemp(suffix='.csv')
+        # Use secure temp file creation
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as temp_file_obj:
+            temp_file = temp_file_obj.name
         
         try:
             with patch('src.models.database.SessionLocal') as mock_session_local:
