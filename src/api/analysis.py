@@ -190,47 +190,47 @@ async def get_enrollment_trends(
         raise HTTPException(status_code=500, detail=f"Error calculating enrollment trends: {str(e)}")
 
 
-@router.get("/teacher_users")
-async def get_teacher_users(
-    survey_ids: Optional[List[str]] = Query(None, description="Filter by survey IDs"),
+@router.get("/teacher_surveys")
+async def get_teacher_surveys(
+    course_ids: Optional[List[str]] = Query(None, description="Filter by course IDs"),
     db: Session = Depends(get_db)
 ):
     """
-    Get users who identified as teachers in surveys.
+    Get teacher survey responses.
     
     Query Parameters:
-        survey_ids: Optional list of survey IDs to filter
+        course_ids: Optional list of course IDs to filter
         
     Returns:
-        List of teacher users with their survey responses
+        List of teacher survey responses
     """
     try:
         from src.analysis import user_analysis
         
         df = user_analysis.find_teacher_users(
             db=db,
-            survey_ids=survey_ids
+            course_ids=course_ids
         )
         
         return {
             'success': True,
             'count': len(df),
-            'teachers': df.to_dict('records') if not df.empty else []
+            'surveys': df.to_dict('records') if not df.empty else []
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error finding teacher users: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error finding teacher surveys: {str(e)}")
 
 
 @router.get("/survey_completion")
 async def get_survey_completion_rates(
-    survey_ids: Optional[List[str]] = Query(None, description="Filter by survey IDs"),
+    course_ids: Optional[List[str]] = Query(None, description="Filter by course IDs"),
     db: Session = Depends(get_db)
 ):
     """
     Get survey completion rate analysis.
     
     Query Parameters:
-        survey_ids: Optional list of survey IDs to analyze
+        course_ids: Optional list of course IDs to analyze
         
     Returns:
         Survey completion statistics
@@ -240,7 +240,7 @@ async def get_survey_completion_rates(
         
         df = user_analysis.analyze_survey_completion_rates(
             db=db,
-            survey_ids=survey_ids
+            course_ids=course_ids
         )
         
         return {

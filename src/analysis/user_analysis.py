@@ -3,6 +3,9 @@ User analysis module for survey grouping and teacher identification.
 
 This module provides functionality to analyze survey responses and
 identify specific user groups (e.g., teachers) from survey data.
+
+Note: These functions work with the SurveyResponse table which stores
+survey data in a flexible JSON format.
 """
 
 import pandas as pd
@@ -10,98 +13,73 @@ from typing import List, Dict, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
-from src.models.tables import User, Survey, SurveyResponse
+from src.models.tables import User, SurveyResponse, Course
 
 
 def find_teacher_users(
     db: Session,
-    survey_ids: Optional[List[str]] = None,
-    teacher_columns: Optional[List[str]] = None
+    course_ids: Optional[List[str]] = None,
+    survey_types: Optional[List[str]] = None
 ) -> pd.DataFrame:
     """
     Find users who identified as teachers in surveys.
     
     Args:
         db: Database session
-        survey_ids: Optional list of survey IDs to filter
-        teacher_columns: Optional list of column names that indicate teacher status
+        course_ids: Optional list of course IDs to filter
+        survey_types: Optional list of survey types to filter (e.g., ['teacher'])
         
     Returns:
         DataFrame with teacher user data
     """
-    # Default teacher-indicating column patterns
-    if teacher_columns is None:
-        teacher_columns = [
-            'lehrkraft',
-            'ich_bin_lehrkraft_und_betreue_meine_schler_innen_in_diesem_kurs',
-            'ich_bin_lehrkraft_und_mchte_mir_den_kurs_anschauen'
-        ]
-    
     # Query survey responses
-    query = select(SurveyResponse).join(User)
+    query = select(SurveyResponse)
     
-    if survey_ids:
-        query = query.filter(SurveyResponse.survey_id.in_(survey_ids))
+    if course_ids:
+        query = query.filter(SurveyResponse.course_id.in_(course_ids))
+    
+    if survey_types:
+        query = query.filter(SurveyResponse.survey_type.in_(survey_types))
+    else:
+        # Default to teacher survey type
+        query = query.filter(SurveyResponse.survey_type == 'teacher')
     
     responses = db.execute(query).scalars().all()
     
     # Convert to DataFrame
     data = []
     for response in responses:
-        user = response.user
+        response_data = response.response_data or {}
         data.append({
-            'user_id': user.user_id if user else None,
-            'user_name': user.full_name if user else None,
-            'email': user.email if user else None,
-            'survey_id': response.survey_id,
-            'accessed_at': response.accessed_at,
+            'course_id': response.course_id,
+            'survey_type': response.survey_type,
             'submitted_at': response.submitted_at,
-            'submit_duration': response.submit_duration,
-            'points': response.points,
-            'responses': response.responses  # JSON field with all responses
+            'response_data': response_data
         })
     
     df = pd.DataFrame(data)
     
-    if df.empty:
-        return df
+    # Remove duplicates based on course_id and survey_type
+    if not df.empty:
+        df = df.drop_duplicates(subset=['course_id', 'survey_type'])
     
-    # Filter for teacher responses
-    teacher_data = []
-    for _, row in df.iterrows():
-        responses = row['responses']
-        if responses and isinstance(responses, dict):
-            # Check if any teacher-indicating field is set to '1' or True
-            is_teacher = any(
-                responses.get(col) in ['1', True, 'true', 'True']
-                for col in teacher_columns
-                if col in responses
-            )
-            
-            if is_teacher:
-                teacher_data.append(row)
-    
-    teacher_df = pd.DataFrame(teacher_data)
-    
-    # Remove duplicates based on user_id
-    if not teacher_df.empty and 'user_id' in teacher_df.columns:
-        teacher_df = teacher_df.drop_duplicates(subset=['user_id'])
-    
-    return teacher_df
+    return df
 
 
 def group_survey_responses_by_criteria(
     db: Session,
-    survey_id: str,
-    grouping_column: str
+    course_id: str,
+    survey_type: str,
+    grouping_field: str
 ) -> Dict[str, pd.DataFrame]:
     """
-    Group survey responses by a specific criteria column.
+    Group survey responses by a specific criteria field.
     
     Args:
         db: Database session
-        survey_id: Survey identifier
-        grouping_column: Column name to group by
+        course_id: Course identifier
+        survey_type: Survey type (e.g., 'teacher', 'student')
+        grouping_field: Field name in response_data JSON to group by
         
     Returns:
         Dictionary mapping group values to DataFrames
@@ -109,8 +87,8 @@ def group_survey_responses_by_criteria(
     # Query survey responses
     query = (
         select(SurveyResponse)
-        .join(User)
-        .filter(SurveyResponse.survey_id == survey_id)
+        .filter(SurveyResponse.course_id == course_id)
+        .filter(SurveyResponse.survey_type == survey_type)
     )
     
     responses = db.execute(query).scalars().all()
@@ -118,18 +96,14 @@ def group_survey_responses_by_criteria(
     # Convert to DataFrame
     data = []
     for response in responses:
-        user = response.user
-        responses_dict = response.responses or {}
+        response_dict = response.response_data or {}
         
         data.append({
-            'user_id': user.user_id if user else None,
-            'user_name': user.full_name if user else None,
-            'email': user.email if user else None,
-            'accessed_at': response.accessed_at,
+            'course_id': response.course_id,
+            'survey_type': response.survey_type,
             'submitted_at': response.submitted_at,
-            'points': response.points,
-            'grouping_value': responses_dict.get(grouping_column),
-            **responses_dict
+            'grouping_value': response_dict.get(grouping_field),
+            **response_dict
         })
     
     df = pd.DataFrame(data)
@@ -137,7 +111,7 @@ def group_survey_responses_by_criteria(
     if df.empty:
         return {}
     
-    # Group by the specified column
+    # Group by the specified field
     grouped = {}
     for value in df['grouping_value'].unique():
         if pd.notna(value):
@@ -148,35 +122,38 @@ def group_survey_responses_by_criteria(
 
 def analyze_survey_completion_rates(
     db: Session,
-    survey_ids: Optional[List[str]] = None
+    course_ids: Optional[List[str]] = None
 ) -> pd.DataFrame:
     """
-    Analyze survey completion rates across different surveys.
+    Analyze survey completion rates across different courses and survey types.
     
     Args:
         db: Database session
-        survey_ids: Optional list of survey IDs to analyze
+        course_ids: Optional list of course IDs to analyze
         
     Returns:
         DataFrame with completion rate statistics
     """
-    query = select(Survey)
+    # Get unique combinations of course_id and survey_type
+    query = select(SurveyResponse.course_id, SurveyResponse.survey_type).distinct()
     
-    if survey_ids:
-        query = query.filter(Survey.survey_id.in_(survey_ids))
+    if course_ids:
+        query = query.filter(SurveyResponse.course_id.in_(course_ids))
     
-    surveys = db.execute(query).scalars().all()
+    unique_combinations = db.execute(query).all()
     
     results = []
-    for survey in surveys:
-        # Get responses for this survey
+    for course_id, survey_type in unique_combinations:
+        # Get responses for this combination
         responses_query = (
             select(SurveyResponse)
-            .filter(SurveyResponse.survey_id == survey.survey_id)
+            .filter(SurveyResponse.course_id == course_id)
+            .filter(SurveyResponse.survey_type == survey_type)
         )
         responses = db.execute(responses_query).scalars().all()
         
         total_responses = len(responses)
+        # All responses are considered completed if they have submitted_at
         completed_responses = len([r for r in responses if r.submitted_at is not None])
         
         completion_rate = (
@@ -186,12 +163,11 @@ def analyze_survey_completion_rates(
         )
         
         results.append({
-            'survey_id': survey.survey_id,
-            'survey_title': survey.title,
+            'course_id': course_id,
+            'survey_type': survey_type,
             'total_responses': total_responses,
             'completed_responses': completed_responses,
-            'completion_rate': round(completion_rate, 2),
-            'avg_points': sum(r.points or 0 for r in responses) / len(responses) if responses else 0
+            'completion_rate': round(completion_rate, 2)
         })
     
     return pd.DataFrame(results)
@@ -199,7 +175,8 @@ def analyze_survey_completion_rates(
 
 def extract_user_segments_from_survey(
     db: Session,
-    survey_id: str,
+    course_id: str,
+    survey_type: str,
     segment_criteria: Dict[str, any]
 ) -> pd.DataFrame:
     """
@@ -207,16 +184,17 @@ def extract_user_segments_from_survey(
     
     Args:
         db: Database session
-        survey_id: Survey identifier
-        segment_criteria: Dictionary of column names and expected values
+        course_id: Course identifier
+        survey_type: Survey type (e.g., 'teacher', 'student')
+        segment_criteria: Dictionary of field names and expected values in response_data
         
     Returns:
-        DataFrame with users matching the criteria
+        DataFrame with responses matching the criteria
     """
     query = (
         select(SurveyResponse)
-        .join(User)
-        .filter(SurveyResponse.survey_id == survey_id)
+        .filter(SurveyResponse.course_id == course_id)
+        .filter(SurveyResponse.survey_type == survey_type)
     )
     
     responses = db.execute(query).scalars().all()
@@ -224,13 +202,12 @@ def extract_user_segments_from_survey(
     # Convert to DataFrame
     data = []
     for response in responses:
-        user = response.user
-        responses_dict = response.responses or {}
+        response_dict = response.response_data or {}
         
         # Check if response matches all criteria
         matches = True
-        for column, expected_value in segment_criteria.items():
-            actual_value = responses_dict.get(column)
+        for field, expected_value in segment_criteria.items():
+            actual_value = response_dict.get(field)
             
             if isinstance(expected_value, list):
                 matches = matches and (actual_value in expected_value)
@@ -239,19 +216,16 @@ def extract_user_segments_from_survey(
         
         if matches:
             data.append({
-                'user_id': user.user_id if user else None,
-                'user_name': user.full_name if user else None,
-                'email': user.email if user else None,
-                'accessed_at': response.accessed_at,
+                'course_id': response.course_id,
+                'survey_type': response.survey_type,
                 'submitted_at': response.submitted_at,
-                'points': response.points,
-                **responses_dict
+                **response_dict
             })
     
     df = pd.DataFrame(data)
     
-    # Remove duplicates
-    if not df.empty and 'user_id' in df.columns:
-        df = df.drop_duplicates(subset=['user_id'])
+    # Remove duplicates based on course_id
+    if not df.empty and 'course_id' in df.columns:
+        df = df.drop_duplicates(subset=['course_id'])
     
     return df
