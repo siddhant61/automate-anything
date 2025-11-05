@@ -1,0 +1,102 @@
+Project openhpi_automate {
+  database_type: "PostgreSQL"
+  Note: 'OpenHPI Automation Platform - Database Schema'
+}
+
+Table courses {
+  id serial [pk, increment]
+  code varchar(50) [unique, not null, note: 'Course code (e.g., chatgpt-2024)']
+  title text [not null]
+  description text
+  start_date date
+  end_date date
+  created_at timestamptz [default: `now()`]
+  updated_at timestamptz [default: `now()`]
+  
+  Note: 'Core course information from OpenHPI'
+}
+
+Table course_stats {
+  id serial [pk, increment]
+  course_id int [ref: > courses.id, not null]
+  enrollments int [default: 0]
+  completions int [default: 0]
+  avg_quiz_score numeric(5,2)
+  last_scraped_at timestamptz
+  computed_at timestamptz [default: `now()`]
+  
+  Note: 'Aggregated statistics for each course'
+}
+
+Table users {
+  id serial [pk, increment]
+  email varchar(255) [unique, not null]
+  name text
+  role varchar(50) [note: 'student, instructor, admin']
+  created_at timestamptz [default: `now()`]
+  
+  Note: 'Platform users (students, instructors, admins)'
+}
+
+Table enrollments {
+  id serial [pk, increment]
+  user_id int [ref: > users.id, not null]
+  course_id int [ref: > courses.id, not null]
+  enrolled_at timestamptz [default: `now()`]
+  status varchar(30) [note: 'active, completed, dropped']
+  
+  Indexes {
+    (user_id, course_id) [unique]
+  }
+  
+  Note: 'User course enrollments'
+}
+
+Table quiz_results {
+  id serial [pk, increment]
+  user_id int [ref: > users.id, not null]
+  course_id int [ref: > courses.id, not null]
+  quiz_id varchar(100) [not null]
+  score numeric(5,2)
+  max_score numeric(5,2)
+  taken_at timestamptz [default: `now()`]
+  
+  Note: 'Quiz/assessment results'
+}
+
+Table survey_responses {
+  id serial [pk, increment]
+  user_id int [ref: > users.id]
+  course_id int [ref: > courses.id]
+  survey_id varchar(100)
+  rating int [note: '1-5 scale']
+  comment text
+  submitted_at timestamptz [default: `now()`]
+  
+  Note: 'Course feedback and surveys'
+}
+
+Table helpdesk_tickets {
+  id serial [pk, increment]
+  course_id int [ref: > courses.id]
+  user_id int [ref: > users.id]
+  subject text [not null]
+  status varchar(30) [note: 'open, pending, resolved, closed']
+  priority varchar(20) [note: 'low, normal, high, urgent']
+  created_at timestamptz [default: `now()`]
+  updated_at timestamptz [default: `now()`]
+  
+  Note: 'Support tickets and help requests'
+}
+
+Table scraping_jobs {
+  id serial [pk, increment]
+  job_name text [not null]
+  course_id int [ref: > courses.id]
+  status varchar(30) [note: 'queued, running, success, failed']
+  started_at timestamptz
+  finished_at timestamptz
+  details jsonb
+  
+  Note: 'Background scraping job tracking'
+}

@@ -1,0 +1,37 @@
+flowchart TB
+    subgraph UI_Layer["🖥️ UI Layer"]
+      A1[Streamlit Dashboard<br/>Port 8501]
+    end
+
+    subgraph API_Layer["🔌 API Layer"]
+      B1[FastAPI Server<br/>Swagger/ReDoc<br/>Port 8000]
+    end
+
+    subgraph Service_Layer["⚙️ Service Layer"]
+      C1[Business Services]
+      C2[Scraping Workers]
+      C3[AI Insights<br/>Google Gemini]
+      C4[Automation Jobs]
+    end
+
+    subgraph Data_Layer["💾 Data Layer"]
+      D1[(PostgreSQL<br/>Port 5432)]
+      D2[(File Storage)]
+      D3[(External APIs<br/>OpenHPI)]
+    end
+
+    A1 <-->|REST API| B1
+    B1 <-->|Service Calls| C1
+    C1 <-->|SQL Queries| D1
+    C2 -->|Process Data| C1
+    C2 -->|Store Files| D2
+    C3 -->|Generate Insights| C1
+    C3 <-->|Read/Write| D1
+    C4 -->|Automate Tasks| C1
+    C4 <-->|Batch Operations| D1
+    C1 <-->|Scrape Data| D3
+
+    classDef layer fill:#f8f9fb,stroke:#c9ced6,color:#111,stroke-width:2px;
+    classDef tech fill:#e3f2fd,stroke:#1976d2,color:#111,stroke-width:1px;
+    class UI_Layer,API_Layer,Service_Layer,Data_Layer layer;
+    class A1,B1,C1,C2,C3,C4,D1,D2,D3 tech;

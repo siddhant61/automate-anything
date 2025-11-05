@@ -127,6 +127,40 @@ docker-compose up -d
 
 See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed deployment instructions.
 
+## 📸 Platform Screenshots
+
+Below are screenshots captured from a running local instance showcasing the platform's interfaces.
+
+### Dashboard & UI
+
+![Dashboard Home](docs/images/01-dashboard-home.png)
+*Dashboard homepage with navigation sidebar and welcome screen*
+
+![Analytics Page](docs/images/02-analytics-page.png)
+*Interactive analytics page with Plotly charts showing course metrics*
+
+![AI Insights](docs/images/03-ai-insights.png)
+*AI-powered insights page with Google Gemini integration*
+
+![Automation Tools](docs/images/04-automation-page.png)
+*Automation interface for batch enrollment and helpdesk monitoring*
+
+### API Documentation
+
+![Swagger UI](docs/images/05-api-docs-swagger.png)
+*FastAPI Swagger UI with interactive API documentation*
+
+![ReDoc Interface](docs/images/06-api-docs-redoc.png)
+*Alternative ReDoc documentation interface*
+
+![API Endpoints](docs/images/11-api-endpoints.png)
+*Complete API endpoint overview organized by modules*
+
+![API Response](docs/images/12-api-response.png)
+*Example JSON response from the courses API endpoint*
+
+> **Note:** To regenerate screenshots automatically, use `python scripts/capture_web_screenshots.py` (requires Playwright and running services).
+
 ### Manual Installation
 
 ```bash
@@ -163,18 +197,6 @@ The interactive web dashboard provides:
 
 **Access:** http://localhost:8501
 
-![Dashboard Home Page](docs/images/01-dashboard-home.png)
-*The main dashboard interface showing course overview and navigation*
-
-![Analytics Page](docs/images/02-analytics-page.png)
-*Course analytics with interactive Plotly charts and metrics*
-
-![AI Insights Page](docs/images/03-ai-insights.png)
-*AI-powered course summaries and feedback analysis*
-
-![Automation Page](docs/images/04-automation-page.png)
-*Automation tools interface for batch operations*
-
 ### 2. REST API (FastAPI)
 
 Comprehensive API with 19 endpoints across 5 modules:
@@ -207,12 +229,6 @@ Comprehensive API with 19 endpoints across 5 modules:
 
 **Interactive Documentation:** http://localhost:8000/docs
 
-![API Documentation - Swagger UI](docs/images/05-api-docs-swagger.png)
-*FastAPI automatic interactive documentation (Swagger UI)*
-
-![API Documentation - ReDoc](docs/images/06-api-docs-redoc.png)
-*Alternative API documentation interface (ReDoc)*
-
 ### 3. CLI Commands
 
 15 rich command-line tools for automation:
@@ -243,12 +259,6 @@ python -m src.cli automate helpdesk       # Check helpdesk
 python -m src.cli ai summarize            # Generate summaries
 python -m src.cli ai feedback             # Analyze feedback
 ```
-
-![CLI Interface](docs/images/07-cli-interface.png)
-*Rich command-line interface with interactive prompts*
-
-![CLI Output Example](docs/images/08-cli-output.png)
-*Example CLI output showing analytics generation*
 
 ## 🔧 Configuration
 
@@ -304,9 +314,6 @@ The platform uses a unified database with 8 main tables:
 | `survey_responses` | Survey feedback and responses |
 | `helpdesk_tickets` | Support ticket tracking |
 | `scraping_jobs` | Job execution tracking |
-
-![Database Schema](docs/images/13-database-schema.png)
-*Entity-relationship diagram showing the database structure*
 
 ### Database Migrations
 
@@ -376,9 +383,6 @@ docker-compose exec api python -m src.cli --help
 docker-compose exec db pg_dump -U openhpi openhpi_automation > backup.sql
 ```
 
-![Docker Containers Running](docs/images/10-docker-containers.png)
-*Docker containers running all platform services*
-
 See [DEPLOYMENT.md](DEPLOYMENT.md) for comprehensive deployment guide.
 
 ## 📖 API Documentation
@@ -387,9 +391,6 @@ The API provides automatic interactive documentation:
 
 - **Swagger UI**: http://localhost:8000/docs
 - **ReDoc**: http://localhost:8000/redoc
-
-![API Endpoints Overview](docs/images/11-api-endpoints.png)
-*Complete list of available API endpoints organized by module*
 
 ### Example API Usage
 
@@ -423,9 +424,6 @@ curl -X POST http://localhost:8000/api/scraping/courses
 
 curl "http://localhost:8000/api/courses/?language=English&limit=10"
 ```
-
-![API Response Example](docs/images/12-api-response.png)
-*Example API response showing course data in JSON format*
 
 ## 👨‍💻 Developer Guide: Adding a New Module
 
