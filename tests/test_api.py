@@ -66,7 +66,7 @@ def test_root_endpoint(test_client):
     response = test_client.get("/")
     assert response.status_code == 200
     data = response.json()
-    assert data["name"] == "OpenHPI Automation API"
+    assert data["name"] == "Data Pipeline Platform API"
     assert data["status"] == "operational"
 
 

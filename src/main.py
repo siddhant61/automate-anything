@@ -23,9 +23,9 @@ async def lifespan(app: FastAPI):
 
 # Initialize FastAPI app
 app = FastAPI(
-    title="OpenHPI Automation API",
-    description="A unified API for OpenHPI course management, analytics, and automation",
-    version="0.1.0",
+    title="Data Pipeline Platform API",
+    description="A modular platform for scraping, analyzing, and automating data pipelines. Supports multiple data sources including OpenHPI.",
+    version="1.0.0",
     debug=settings.debug,
     lifespan=lifespan,
 )
@@ -44,11 +44,12 @@ app.add_middleware(
 async def root():
     """Root endpoint providing API information."""
     return {
-        "name": "OpenHPI Automation API",
-        "version": "0.1.0",
+        "name": "Data Pipeline Platform API",
+        "version": "1.0.0",
         "status": "operational",
         "environment": settings.env,
         "docs_url": "/docs",
+        "description": "Modular scraping and analysis platform supporting multiple data sources"
     }
 
 
@@ -63,13 +64,18 @@ async def health_check():
 
 
 # Import and include routers
-from src.api import courses, scraping, analysis, automation, ai
+from src.api import sources, data, courses, scraping, analysis, automation, ai
 
-app.include_router(courses.router, prefix="/api/courses", tags=["Courses"])
-app.include_router(scraping.router, prefix="/api/scraping", tags=["Scraping"])
-app.include_router(analysis.router, prefix="/api/analysis", tags=["Analysis"])
-app.include_router(automation.router, prefix="/api/automation", tags=["Automation"])
-app.include_router(ai.router, prefix="/api/ai", tags=["AI"])
+# Generic platform endpoints
+app.include_router(sources.router, prefix="/api/sources", tags=["Sources"])
+app.include_router(data.router, prefix="/api/data", tags=["Data"])
+
+# OpenHPI-specific endpoints (legacy, now under "Example: OpenHPI")
+app.include_router(courses.router, prefix="/api/courses", tags=["OpenHPI - Courses"])
+app.include_router(scraping.router, prefix="/api/scraping", tags=["OpenHPI - Scraping"])
+app.include_router(analysis.router, prefix="/api/analysis", tags=["OpenHPI - Analysis"])
+app.include_router(automation.router, prefix="/api/automation", tags=["OpenHPI - Automation"])
+app.include_router(ai.router, prefix="/api/ai", tags=["OpenHPI - AI"])
 
 
 if __name__ == "__main__":

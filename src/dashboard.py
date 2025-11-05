@@ -1,10 +1,11 @@
 """
-Streamlit Dashboard for OpenHPI Automation Platform.
+Streamlit Dashboard for Data Pipeline Platform.
 
 This dashboard provides a user-friendly interface for:
-- Viewing course analytics and statistics
-- Accessing AI-powered insights
-- Triggering automation tasks
+- Managing data sources
+- Triggering and monitoring scraping jobs
+- Viewing scraped and processed data
+- Accessing analytics and AI insights (OpenHPI module example)
 - Monitoring system status
 """
 
@@ -17,8 +18,8 @@ from typing import Dict, List, Optional
 
 # Configure Streamlit page
 st.set_page_config(
-    page_title="OpenHPI Automation Dashboard",
-    page_icon="📚",
+    page_title="Data Pipeline Platform Dashboard",
+    page_icon="🔄",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -48,7 +49,7 @@ def get_ai_health() -> Dict:
 
 
 # Sidebar Navigation
-st.sidebar.title("📚 OpenHPI Automation")
+st.sidebar.title("🔄 Data Pipeline Platform")
 st.sidebar.markdown("---")
 
 # Check API status
@@ -71,7 +72,7 @@ st.sidebar.markdown("---")
 # Navigation
 page = st.sidebar.radio(
     "Navigation",
-    ["🏠 Dashboard", "📊 Analytics", "🤖 AI Insights", "⚙️ Automation", "ℹ️ About"]
+    ["🏠 Dashboard", "📂 Source Manager", "📊 Example: OpenHPI Analytics", "🤖 Example: OpenHPI AI", "⚙️ Example: OpenHPI Automation", "ℹ️ About"]
 )
 
 st.sidebar.markdown("---")
@@ -80,8 +81,8 @@ st.sidebar.markdown("### Quick Actions")
 
 # ================== HOME PAGE ==================
 if page == "🏠 Dashboard":
-    st.title("OpenHPI Automation Dashboard")
-    st.markdown("Welcome to the OpenHPI course management and automation platform.")
+    st.title("🔄 Data Pipeline Platform Dashboard")
+    st.markdown("Welcome to the modular scraping and analysis platform. Manage data sources, scrape content, and analyze results.")
     
     # Display system status
     col1, col2, col3, col4 = st.columns(4)
@@ -93,57 +94,176 @@ if page == "🏠 Dashboard":
         st.metric("AI Service", "Enabled" if ai_status.get('enabled') else "Disabled")
     
     with col3:
-        # Get course count
+        # Get source count
         try:
-            response = requests.get(f"{API_BASE_URL}/api/courses/", timeout=5)
+            response = requests.get(f"{API_BASE_URL}/api/sources/", timeout=5)
             if response.status_code == 200:
-                courses = response.json().get('courses', [])
-                st.metric("Total Courses", len(courses))
+                sources = response.json().get('sources', [])
+                st.metric("Total Sources", len(sources))
             else:
-                st.metric("Total Courses", "N/A")
+                st.metric("Total Sources", "N/A")
         except:
-            st.metric("Total Courses", "N/A")
+            st.metric("Total Sources", "N/A")
     
     with col4:
-        st.metric("Environment", "Development")
+        # Get available modules
+        try:
+            response = requests.get(f"{API_BASE_URL}/api/data/modules", timeout=5)
+            if response.status_code == 200:
+                modules = response.json().get('scrapers', [])
+                st.metric("Available Modules", len(modules))
+            else:
+                st.metric("Available Modules", "N/A")
+        except:
+            st.metric("Available Modules", "N/A")
     
     st.markdown("---")
     
-    # Recent Activity / Quick Stats
-    st.subheader("Quick Stats")
+    # Platform Overview
+    st.subheader("Platform Overview")
     
-    try:
-        # Get categories
-        response = requests.get(f"{API_BASE_URL}/api/courses/categories", timeout=5)
-        if response.status_code == 200:
-            categories = response.json().get('categories', [])
-            
-            col1, col2 = st.columns(2)
-            with col1:
-                st.info(f"📚 **{len(categories)} Course Categories**")
-            with col2:
-                if categories:
-                    st.info(f"🏷️ Categories: {', '.join(categories[:5])}")
-    except:
-        pass
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("""
+        ### 🎯 Core Features
+        - **📂 Source Manager**: Add, configure, and manage data sources
+        - **🔄 Generic Scraping**: Modular scraping architecture supporting multiple sources
+        - **📊 Data Storage**: Generic tables for raw and processed data
+        - **🔌 Pluggable Modules**: Add custom scrapers and analyzers
+        """)
+    
+    with col2:
+        st.markdown("""
+        ### 📚 Example Module: OpenHPI
+        The OpenHPI module demonstrates the platform's capabilities:
+        - **Public Scraper**: No credentials required
+        - **Analytics**: Course statistics and trends
+        - **AI Insights**: Powered by Google Generative AI
+        - **Automation**: Batch operations (requires credentials)
+        """)
     
     st.markdown("---")
     st.subheader("Getting Started")
     st.markdown("""
-    ### Features:
-    - **📊 Analytics**: View course statistics, enrollment trends, and performance metrics
-    - **🤖 AI Insights**: Get AI-powered course summaries and feedback analysis
-    - **⚙️ Automation**: Batch enroll users, monitor helpdesk, and update pages
+    1. **Add a Data Source**: Go to Source Manager to create your first source
+    2. **Configure Module**: Select a scraping module (e.g., "openhpi_public")
+    3. **Trigger Scrape**: Start collecting data from your source
+    4. **View Results**: Access scraped and processed data via the dashboard
     
     ### Quick Links:
     - [API Documentation]({}/docs)
     - [Health Check]({}/health)
-    """.format(API_BASE_URL, API_BASE_URL))
+    - [Available Modules]({}/api/data/modules)
+    """.format(API_BASE_URL, API_BASE_URL, API_BASE_URL))
 
 
-# ================== ANALYTICS PAGE ==================
-elif page == "📊 Analytics":
-    st.title("📊 Course Analytics")
+# ================== SOURCE MANAGER PAGE ==================
+elif page == "📂 Source Manager":
+    st.title("📂 Data Source Manager")
+    st.markdown("Manage your data sources and trigger scraping jobs.")
+    
+    # Tabs for different source operations
+    tab1, tab2 = st.tabs(["View Sources", "Add New Source"])
+    
+    with tab1:
+        st.subheader("All Data Sources")
+        
+        # Get and display sources
+        try:
+            response = requests.get(f"{API_BASE_URL}/api/sources/", timeout=10)
+            if response.status_code == 200:
+                data = response.json()
+                sources = data.get('sources', [])
+                
+                if sources:
+                    for source in sources:
+                        with st.expander(f"📌 {source['name']} ({source['source_type']})"):
+                            col1, col2 = st.columns([3, 1])
+                            
+                            with col1:
+                                st.markdown(f"**URL:** {source['url']}")
+                                st.markdown(f"**Module:** {source['module_name']}")
+                                st.markdown(f"**Active:** {'✅' if source['is_active'] else '❌'}")
+                                last_scraped = source.get('last_scraped_at', 'Never')
+                                st.markdown(f"**Last Scraped:** {last_scraped}")
+                            
+                            with col2:
+                                if st.button(f"Scrape Now", key=f"scrape_{source['id']}"):
+                                    with st.spinner("Scraping..."):
+                                        try:
+                                            scrape_response = requests.post(
+                                                f"{API_BASE_URL}/api/data/scrape/{source['id']}",
+                                                timeout=60
+                                            )
+                                            if scrape_response.status_code == 200:
+                                                result = scrape_response.json()
+                                                st.success(f"✓ Scraped successfully!")
+                                                st.json(result)
+                                            else:
+                                                st.error(f"Scraping failed: {scrape_response.text}")
+                                        except Exception as e:
+                                            st.error(f"Error: {e}")
+                else:
+                    st.info("No sources configured yet. Add your first source in the 'Add New Source' tab.")
+            else:
+                st.error("Could not load sources")
+        except Exception as e:
+            st.error(f"Error loading sources: {e}")
+    
+    with tab2:
+        st.subheader("Add New Data Source")
+        
+        # Get available modules
+        try:
+            response = requests.get(f"{API_BASE_URL}/api/data/modules", timeout=5)
+            if response.status_code == 200:
+                available_modules = response.json().get('scrapers', [])
+            else:
+                available_modules = ['openhpi_public']
+        except:
+            available_modules = ['openhpi_public']
+        
+        # Form for adding a new source
+        with st.form("add_source_form"):
+            name = st.text_input("Source Name", placeholder="e.g., OpenHPI Courses")
+            url = st.text_input("URL", placeholder="https://open.hpi.de/courses")
+            source_type = st.text_input("Source Type", placeholder="e.g., course_catalog")
+            module_name = st.selectbox("Scraping Module", available_modules)
+            is_active = st.checkbox("Active", value=True)
+            
+            submitted = st.form_submit_button("Add Source")
+            
+            if submitted:
+                if name and url and source_type and module_name:
+                    try:
+                        response = requests.post(
+                            f"{API_BASE_URL}/api/sources/",
+                            json={
+                                'name': name,
+                                'url': url,
+                                'source_type': source_type,
+                                'module_name': module_name,
+                                'is_active': is_active
+                            },
+                            timeout=10
+                        )
+                        if response.status_code == 200:
+                            st.success("✓ Source added successfully!")
+                            st.json(response.json())
+                            st.balloons()
+                        else:
+                            st.error(f"Failed to add source: {response.text}")
+                    except Exception as e:
+                        st.error(f"Error: {e}")
+                else:
+                    st.warning("Please fill in all required fields")
+
+
+# ================== OPENHPI ANALYTICS PAGE ==================
+elif page == "📊 Example: OpenHPI Analytics":
+    st.title("📊 OpenHPI Course Analytics (Example Module)")
+    st.info("This is an example of module-specific analytics using OpenHPI data.")
     
     # Tab navigation for different analytics
     tab1, tab2, tab3 = st.tabs(["Course Metrics", "Annual Statistics", "Quiz Performance"])
@@ -297,8 +417,9 @@ elif page == "📊 Analytics":
 
 
 # ================== AI INSIGHTS PAGE ==================
-elif page == "🤖 AI Insights":
-    st.title("🤖 AI-Powered Insights")
+elif page == "🤖 Example: OpenHPI AI":
+    st.title("🤖 OpenHPI AI-Powered Insights (Example Module)")
+    st.info("This demonstrates AI capabilities for the OpenHPI module.")
     
     if not ai_status.get('enabled'):
         st.warning("⚠️ AI service is not configured. Please set GOOGLE_API_KEY in your environment.")
@@ -426,9 +547,11 @@ elif page == "🤖 AI Insights":
             st.error(f"Error loading courses: {str(e)}")
 
 
-# ================== AUTOMATION PAGE ==================
-elif page == "⚙️ Automation":
-    st.title("⚙️ Automation Tasks")
+# ================== OPENHPI AUTOMATION PAGE ==================
+elif page == "⚙️ Example: OpenHPI Automation":
+    st.title("⚙️ OpenHPI Automation Tasks (Example Module)")
+    st.warning("⚠️ These automation features require OpenHPI credentials and are disabled by default.")
+    st.info("This demonstrates automation capabilities that can be implemented for any module.")
     
     # Tab navigation for different automation tasks
     tab1, tab2, tab3 = st.tabs(["Batch Enrollment", "Helpdesk Monitor", "Page Updates"])
@@ -568,61 +691,110 @@ elif page == "⚙️ Automation":
 
 # ================== ABOUT PAGE ==================
 elif page == "ℹ️ About":
-    st.title("About OpenHPI Automation")
+    st.title("About Data Pipeline Platform")
     
     st.markdown("""
-    ## OpenHPI Automation Platform
+    ## Data Pipeline Platform
     
-    A unified automation and analytics platform for OpenHPI course management.
+    A modular, general-purpose platform for scraping, analyzing, and automating data pipelines.
     
-    ### Features
+    ### 🎯 Platform Features
     
-    #### 📊 Analytics
-    - Course performance metrics and trends
-    - Annual statistics reports
-    - Quiz performance analysis
-    - Enrollment tracking
+    #### 📂 Source Management
+    - Define and manage multiple data sources
+    - Support for various source types
+    - Configurable scraping modules
     
-    #### 🤖 AI Insights
-    - Course summaries powered by Google Gemini
-    - Survey feedback analysis
-    - Key concept extraction
-    - Automated insights generation
+    #### 🔄 Generic Scraping
+    - Modular scraping architecture
+    - Pluggable scraper modules
+    - Raw data storage (HTML, JSON, text)
     
-    #### ⚙️ Automation
-    - Batch user enrollment
-    - Helpdesk ticket monitoring
-    - Page content updates
-    - Automated notifications
+    #### 📊 Data Processing
+    - Generic processed data tables
+    - Flexible metadata storage
+    - Module-specific analyzers
+    
+    #### 🔌 Extensible Architecture
+    - Add custom scraping modules
+    - Register custom analyzers
+    - Module-specific configurations
+    
+    ### 📚 Example Module: OpenHPI
+    
+    The OpenHPI module demonstrates platform capabilities:
+    
+    #### Public Features (No Credentials)
+    - Course catalog scraping
+    - Public data collection
+    - Basic analytics
+    
+    #### Private Features (Requires Credentials)
+    - User enrollment automation
+    - Helpdesk monitoring
+    - AI-powered insights
+    - Advanced analytics
     
     ### Technology Stack
     
     - **Backend**: FastAPI + SQLAlchemy
     - **Frontend**: Streamlit
-    - **AI**: langfun + Google Generative AI
+    - **Scraping**: requests + BeautifulSoup4
+    - **AI** (OpenHPI module): langfun + Google Generative AI
     - **Database**: SQLite (configurable to PostgreSQL)
-    - **Automation**: Selenium WebDriver
+    - **Automation** (OpenHPI module): Selenium WebDriver
     
     ### Architecture
     
     ```
-    Dashboard (Streamlit) → API (FastAPI) → Services → Database
+    Dashboard (Streamlit)
+         ↓
+    API (FastAPI)
+         ↓
+    Orchestrators (Scraping & Analysis)
+         ↓
+    Modules (OpenHPI, Generic, Custom...)
+         ↓
+    Database (Generic Tables + Module-Specific)
     ```
+    
+    ### Creating a Custom Module
+    
+    1. Create module directory in `src/modules/your_module/`
+    2. Implement scraper function: `scrape(db: Session, source_id: int) -> Dict`
+    3. Register with orchestrator: `scraping_orchestrator.register_scraper('your_module', scrape)`
+    4. Optional: Register custom analyzer
+    5. Add module-specific tables if needed
     
     ### API Endpoints
     
     Visit [/docs]({}/docs) for interactive API documentation.
     
+    #### Generic Endpoints
+    - `/api/sources/` - Manage data sources
+    - `/api/data/scrape/{{source_id}}` - Trigger scraping
+    - `/api/data/processed/{{source_id}}` - Get processed data
+    
+    #### OpenHPI Module Endpoints
+    - `/api/courses/` - OpenHPI courses (legacy)
+    - `/api/analysis/` - OpenHPI analytics
+    - `/api/ai/` - AI insights for OpenHPI
+    - `/api/automation/` - OpenHPI automation tasks
+    
     ### Configuration
     
-    The platform requires configuration through environment variables:
-    - `OPENHPI_USERNAME` and `OPENHPI_PASSWORD` for platform access
-    - `GOOGLE_API_KEY` for AI features
-    - `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` for notifications
+    #### Platform Configuration
+    - `DATABASE_URL` - Database connection
+    - `API_HOST` and `API_PORT` - API server settings
+    
+    #### OpenHPI Module (Optional)
+    - `OPENHPI_USERNAME` and `OPENHPI_PASSWORD` - For private features
+    - `GOOGLE_API_KEY` - For AI features
+    - `TELEGRAM_BOT_TOKEN` - For notifications
     
     ### Version
     
-    **v0.1.0** - Phase 4 Complete
+    **v1.0.0** - Phase 8: Platform Generalization Complete
     """.format(API_BASE_URL))
     
     st.markdown("---")
