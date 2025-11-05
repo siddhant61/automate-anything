@@ -32,7 +32,7 @@ def check_api_health() -> bool:
     try:
         response = requests.get(f"{API_BASE_URL}/health", timeout=5)
         return response.status_code == 200
-    except:
+    except Exception:
         return False
 
 
@@ -43,7 +43,7 @@ def get_ai_health() -> Dict:
         if response.status_code == 200:
             return response.json()
         return {'enabled': False, 'status': 'error'}
-    except:
+    except Exception:
         return {'enabled': False, 'status': 'error'}
 
 

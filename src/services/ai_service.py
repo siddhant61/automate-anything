@@ -25,7 +25,7 @@ class AIService:
         else:
             self.enabled = False
     
-    def summarize_course(self, course_title: str, course_description: str) -> Dict[str, str]:
+    def summarize_course(self, course_title: str, course_description: str) -> Dict[str, any]:
         """
         Generate a one-sentence summary of a course description.
         
