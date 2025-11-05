@@ -63,16 +63,13 @@ async def health_check():
 
 
 # Import and include routers
-from src.api import courses, scraping, analysis, automation
+from src.api import courses, scraping, analysis, automation, ai
 
 app.include_router(courses.router, prefix="/api/courses", tags=["Courses"])
 app.include_router(scraping.router, prefix="/api/scraping", tags=["Scraping"])
 app.include_router(analysis.router, prefix="/api/analysis", tags=["Analysis"])
 app.include_router(automation.router, prefix="/api/automation", tags=["Automation"])
-
-# Additional routers will be added in future phases:
-# from src.api import users
-# app.include_router(users.router, prefix="/api/users", tags=["Users"])
+app.include_router(ai.router, prefix="/api/ai", tags=["AI"])
 
 
 if __name__ == "__main__":
