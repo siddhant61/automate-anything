@@ -1,6 +1,6 @@
-# OpenHPI Automation Platform
+# Data Pipeline Platform
 
-> **A production-ready, full-stack automation and analytics platform for the OpenHPI course management system.**
+> **A modular, extensible platform for scraping, analyzing, and automating data pipelines from any source.**
 
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-green.svg)](https://fastapi.tiangolo.com/)
@@ -10,18 +10,22 @@
 
 ## 🎯 Overview
 
-The OpenHPI Automation Platform is a comprehensive solution that unifies course data scraping, analytics, AI-powered insights, and automated workflows into a single, production-ready application. Built with modern technologies and best practices, it provides both a web interface and a REST API for seamless integration.
+The Data Pipeline Platform is a general-purpose, modular system for scraping, processing, and analyzing data from any source. Built with extensibility in mind, it provides a pluggable architecture where new data sources and analysis modules can be easily added.
+
+**OpenHPI Module**: The platform includes a fully-featured OpenHPI module as a reference implementation, demonstrating public scraping, analytics, AI insights, and automation capabilities.
 
 ### Key Features
 
-- **🤖 AI-Powered Analysis** - Google Gemini integration for intelligent course summaries and feedback analysis
-- **📊 Advanced Analytics** - Course metrics, quiz performance tracking, and enrollment trend analysis
-- **⚡ Batch Automation** - Automated user enrollment, helpdesk monitoring, and notifications
-- **🎨 Interactive Dashboard** - Beautiful Streamlit UI for data visualization and insights
+- **🔌 Modular Architecture** - Pluggable scraper and analyzer modules for any data source
+- **📂 Source Management** - Define, configure, and manage multiple data sources through a unified interface
+- **🔄 Generic Scraping** - Flexible scraping framework supporting public and authenticated sources
+- **💾 Generic Data Storage** - Source, ScrapedData, and ProcessedData tables for any content type
+- **🎨 Interactive Dashboard** - Beautiful Streamlit UI for managing sources and viewing data
 - **🚀 REST API** - Comprehensive FastAPI backend with automatic documentation
-- **💾 Unified Database** - Central PostgreSQL/SQLite database replacing CSV-based storage
+- **📊 Example: OpenHPI Analytics** - Course metrics, quiz performance, and enrollment trends
+- **🤖 Example: OpenHPI AI** - Google Gemini integration for intelligent summaries
+- **⚡ Example: OpenHPI Automation** - Batch enrollment, helpdesk monitoring (credentials required)
 - **🐳 Docker Ready** - Complete containerization for easy deployment
-- **📝 CLI Tools** - Rich command-line interface for automation tasks
 
 ## 🏗️ Architecture
 

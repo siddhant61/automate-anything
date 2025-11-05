@@ -186,3 +186,98 @@ class ScrapingJob(Base):
     error_message = Column(Text)
     
     job_metadata = Column(JSON)  # Additional job-specific data
+
+
+# ============================================================================
+# Generic Platform Models (Phase 8: Generalization)
+# ============================================================================
+
+
+class Source(Base):
+    """
+    Generic data source definition.
+    
+    Represents any target that can be scraped (e.g., OpenHPI courses, news sites, etc.).
+    """
+    __tablename__ = "sources"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False, index=True)
+    url = Column(String, nullable=False)
+    source_type = Column(String, nullable=False, index=True)  # e.g., "openhpi_public", "generic_page"
+    
+    # Module/connector to use for scraping
+    module_name = Column(String, nullable=False)  # e.g., "openhpi", "generic"
+    
+    # Configuration for this source (module-specific)
+    config = Column(JSON)
+    
+    # Status
+    is_active = Column(Boolean, default=True)
+    last_scraped_at = Column(DateTime)
+    
+    # Metadata
+    created_at = Column(DateTime, default=utcnow)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
+    
+    # Relationships
+    scraped_data = relationship("ScrapedData", back_populates="source", cascade="all, delete-orphan")
+
+
+class ScrapedData(Base):
+    """
+    Generic storage for raw scraped data.
+    
+    Stores raw HTML, JSON, or other data formats from any source.
+    """
+    __tablename__ = "scraped_data"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    source_id = Column(Integer, ForeignKey("sources.id"), nullable=False, index=True)
+    
+    # Raw data
+    url = Column(String, nullable=False)
+    raw_html = Column(Text)
+    raw_json = Column(JSON)
+    raw_text = Column(Text)
+    
+    # Metadata
+    scraped_at = Column(DateTime, default=utcnow, index=True)
+    scrape_job_id = Column(Integer, ForeignKey("scraping_jobs.id"))
+    
+    # HTTP response info
+    status_code = Column(Integer)
+    content_type = Column(String)
+    
+    # Relationships
+    source = relationship("Source", back_populates="scraped_data")
+    processed_data = relationship("ProcessedData", back_populates="scraped_data", cascade="all, delete-orphan")
+
+
+class ProcessedData(Base):
+    """
+    Generic storage for processed/analyzed data.
+    
+    Stores cleaned, extracted, and analyzed data from raw scraped content.
+    """
+    __tablename__ = "processed_data"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    scraped_data_id = Column(Integer, ForeignKey("scraped_data.id"), nullable=False, index=True)
+    
+    # Extracted/processed content
+    title = Column(String, index=True)
+    content_text = Column(Text)
+    summary = Column(Text)
+    
+    # Analysis results
+    sentiment_score = Column(Float)
+    key_concepts = Column(JSON)  # Array of extracted concepts
+    data_metadata = Column(JSON)  # Flexible storage for module-specific data
+    
+    # Processing info
+    processor_module = Column(String)  # Which module processed this
+    processed_at = Column(DateTime, default=utcnow, index=True)
+    
+    # Relationships
+    scraped_data = relationship("ScrapedData", back_populates="processed_data")

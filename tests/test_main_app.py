@@ -22,8 +22,8 @@ def test_root_endpoint(client):
     
     assert response.status_code == 200
     data = response.json()
-    assert data['name'] == 'OpenHPI Automation API'
-    assert data['version'] == '0.1.0'
+    assert data['name'] == 'Data Pipeline Platform API'
+    assert data['version'] == '1.0.0'
     assert data['status'] == 'operational'
     assert 'docs_url' in data
 
@@ -52,16 +52,20 @@ def test_cors_headers(client):
 
 def test_app_metadata():
     """Test FastAPI app metadata."""
-    assert app.title == "OpenHPI Automation API"
-    assert app.version == "0.1.0"
-    assert "automation" in app.description.lower()
+    assert app.title == "Data Pipeline Platform API"
+    assert app.version == "1.0.0"
+    assert "platform" in app.description.lower()
 
 
 def test_routers_included():
     """Test that all routers are included."""
     routes = [route.path for route in app.routes]
     
-    # Check key API routes exist
+    # Check generic platform routes exist
+    assert any('/api/sources' in route for route in routes)
+    assert any('/api/data' in route for route in routes)
+    
+    # Check OpenHPI module routes exist (legacy)
     assert any('/api/courses' in route for route in routes)
     assert any('/api/scraping' in route for route in routes)
     assert any('/api/analysis' in route for route in routes)
@@ -78,5 +82,5 @@ def test_main_module_structure():
     assert hasattr(main, 'settings')
     
     # Verify the app is configured properly
-    assert main.app.title == "OpenHPI Automation API"
-    assert main.app.version == "0.1.0"
+    assert main.app.title == "Data Pipeline Platform API"
+    assert main.app.version == "1.0.0"
