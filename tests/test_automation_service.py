@@ -216,3 +216,181 @@ def test_global_service_instance():
     """Test global service instance exists."""
     assert automation_service is not None
     assert isinstance(automation_service, AutomationService)
+
+
+@patch('src.services.automation_service.webdriver.Chrome')
+@patch('src.services.automation_service.WebDriverWait')
+def test_batch_enroll_users_success(mock_wait, mock_chrome, service):
+    """Test successful batch enrollment."""
+    mock_driver = Mock()
+    mock_chrome.return_value = mock_driver
+    
+    # Mock login success
+    mock_driver.get = Mock()
+    mock_driver.current_url = "https://open.hpi.de/dashboard"
+    
+    # Mock WebDriverWait for various elements
+    mock_wait_instance = Mock()
+    mock_wait.return_value = mock_wait_instance
+    
+    # Mock elements for the enrollment flow
+    mock_element = Mock()
+    mock_element.send_keys = Mock()
+    mock_element.clear = Mock()
+    mock_element.click = Mock()
+    mock_wait_instance.until.return_value = mock_element
+    
+    mock_driver.find_element.return_value = mock_element
+    
+    # Mock "Enter course" check (user already enrolled)
+    mock_driver.find_element.side_effect = [
+        mock_element,  # search button
+        mock_element,  # details link
+        mock_element,  # masq button
+        Mock(),  # Enter course found - already enrolled
+    ]
+    
+    users = ['test@example.com']
+    course_id = 'python-101'
+    
+    with patch.object(service, '_login_openhpi', return_value=True):
+        result = service.batch_enroll_users(users, course_id, headless=True)
+    
+    assert 'enrolled' in result
+    assert 'unregistered' in result
+    mock_driver.quit.assert_called_once()
+
+
+@patch('src.services.automation_service.webdriver.Chrome')
+def test_batch_enroll_users_login_failure(mock_chrome, service):
+    """Test batch enrollment with login failure."""
+    mock_driver = Mock()
+    mock_chrome.return_value = mock_driver
+    
+    with patch.object(service, '_login_openhpi', return_value=False):
+        with pytest.raises(Exception, match="Failed to login"):
+            service.batch_enroll_users(['test@example.com'], 'course-1')
+    
+    mock_driver.quit.assert_called_once()
+
+
+@patch('src.services.automation_service.webdriver.Chrome')
+@patch('src.services.automation_service.WebDriverWait')
+def test_batch_enroll_users_user_not_found(mock_wait, mock_chrome, service):
+    """Test batch enrollment when user is not found."""
+    mock_driver = Mock()
+    mock_chrome.return_value = mock_driver
+    mock_driver.get = Mock()
+    mock_driver.current_url = "https://open.hpi.de/dashboard"
+    
+    # Mock wait to raise exception when looking for Details link
+    mock_wait_instance = Mock()
+    mock_wait.return_value = mock_wait_instance
+    
+    # First calls succeed, then Details link fails
+    mock_element = Mock()
+    mock_wait_instance.until.side_effect = [
+        mock_element,  # username field
+        mock_element,  # password field
+        mock_element,  # login button
+        lambda d: True,  # wait for redirect
+        mock_element,  # search field
+        Exception("User not found"),  # Details link not found
+    ]
+    
+    mock_driver.find_element.return_value = mock_element
+    
+    users = ['notfound@example.com']
+    course_id = 'python-101'
+    
+    with patch.object(service, '_login_openhpi', return_value=True):
+        result = service.batch_enroll_users(users, course_id, headless=True)
+    
+    assert len(result['unregistered']) == 1
+    assert 'notfound@example.com' in result['unregistered']
+
+
+@patch('src.services.automation_service.webdriver.Chrome')
+@patch('src.services.automation_service.WebDriverWait')
+def test_login_helpdesk_success(mock_wait, mock_chrome, service):
+    """Test successful helpdesk login."""
+    mock_driver = Mock()
+    mock_chrome.return_value = mock_driver
+    
+    mock_wait_instance = Mock()
+    mock_wait.return_value = mock_wait_instance
+    
+    mock_element = Mock()
+    mock_wait_instance.until.return_value = mock_element
+    mock_driver.find_element.return_value = mock_element
+    
+    result = service._login_helpdesk(mock_driver)
+    
+    assert result is True
+    mock_driver.get.assert_called_once()
+
+
+@patch('src.services.automation_service.webdriver.Chrome')
+def test_login_helpdesk_failure(mock_chrome, service):
+    """Test failed helpdesk login."""
+    mock_driver = Mock()
+    mock_driver.get.side_effect = Exception("Network error")
+    
+    result = service._login_helpdesk(mock_driver)
+    
+    assert result is False
+
+
+
+
+
+@patch('src.services.automation_service.webdriver.Chrome')
+def test_check_and_notify_helpdesk_login_failure(mock_chrome, service):
+    """Test checking tickets with login failure."""
+    mock_driver = Mock()
+    mock_chrome.return_value = mock_driver
+    
+    with patch.object(service, '_login_helpdesk', return_value=False):
+        with pytest.raises(Exception, match="Failed to login"):
+            service.check_and_notify_helpdesk()
+    
+    mock_driver.quit.assert_called_once()
+
+
+def test_analyze_tickets_empty():
+    """Test analyzing empty ticket list."""
+    service = AutomationService()
+    analysis = service._analyze_tickets([])
+    
+    assert analysis['within_6hrs'] == 0
+    assert analysis['within_12hrs'] == 0
+    assert analysis['within_24hrs'] == 0
+    assert analysis['within_48hrs'] == 0
+    assert len(analysis['by_owner']) == 0
+
+
+def test_analyze_tickets_various_times():
+    """Test ticket analysis with various time formats."""
+    service = AutomationService()
+    
+    tickets = [
+        {'ticket_id': '1', 'time_open': '30 minutes ago', 'owner': 'Alice', 'state': 'open'},
+        {'ticket_id': '2', 'time_open': '5 hours ago', 'owner': 'Bob', 'state': 'open'},
+        {'ticket_id': '3', 'time_open': '8 hours ago', 'owner': 'Alice', 'state': 'open'},
+        {'ticket_id': '4', 'time_open': '15 hours ago', 'owner': 'Charlie', 'state': 'open'},
+        {'ticket_id': '5', 'time_open': '30 hours ago', 'owner': 'Bob', 'state': 'open'},
+        {'ticket_id': '6', 'time_open': '2024/01/15', 'owner': 'Not Assigned', 'state': 'open'},
+    ]
+    
+    analysis = service._analyze_tickets(tickets)
+    
+    assert analysis['within_6hrs'] == 2  # 30 min and 5 hours
+    assert analysis['within_12hrs'] == 1  # 8 hours
+    assert analysis['within_24hrs'] == 1  # 15 hours
+    assert analysis['within_48hrs'] == 1  # 30 hours
+    assert analysis['by_owner']['Alice'] == 2
+    assert analysis['by_owner']['Bob'] == 2
+    assert analysis['by_owner']['Charlie'] == 1
+
+
+
