@@ -188,3 +188,64 @@ async def get_enrollment_trends(
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error calculating enrollment trends: {str(e)}")
+
+
+@router.get("/teacher_surveys")
+async def get_teacher_surveys(
+    course_ids: Optional[List[str]] = Query(None, description="Filter by course IDs"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get teacher survey responses.
+    
+    Query Parameters:
+        course_ids: Optional list of course IDs to filter
+        
+    Returns:
+        List of teacher survey responses
+    """
+    try:
+        from src.analysis import user_analysis
+        
+        df = user_analysis.find_teacher_users(
+            db=db,
+            course_ids=course_ids
+        )
+        
+        return {
+            'success': True,
+            'count': len(df),
+            'surveys': df.to_dict('records') if not df.empty else []
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error finding teacher surveys: {str(e)}")
+
+
+@router.get("/survey_completion")
+async def get_survey_completion_rates(
+    course_ids: Optional[List[str]] = Query(None, description="Filter by course IDs"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get survey completion rate analysis.
+    
+    Query Parameters:
+        course_ids: Optional list of course IDs to analyze
+        
+    Returns:
+        Survey completion statistics
+    """
+    try:
+        from src.analysis import user_analysis
+        
+        df = user_analysis.analyze_survey_completion_rates(
+            db=db,
+            course_ids=course_ids
+        )
+        
+        return {
+            'success': True,
+            'surveys': df.to_dict('records') if not df.empty else []
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error analyzing survey completion: {str(e)}")

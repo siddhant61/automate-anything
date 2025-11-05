@@ -317,5 +317,125 @@ def update_page(
         raise typer.Exit(1)
 
 
+# Course management commands
+course_app = typer.Typer(help="Course management commands")
+app.add_typer(course_app, name="course")
+
+
+@course_app.command("parse")
+def parse_course(
+    input_file: str = typer.Argument(..., help="JSON file with EdX course data"),
+    org: str = typer.Option("HPI", help="Organization identifier"),
+    course_id: str = typer.Option("course", help="Course identifier"),
+    url_name: str = typer.Option("2024", help="URL name for the course")
+):
+    """Parse EdX course data and generate OpenHPI structure."""
+    import json
+    from src.services.course_parser_service import course_parser_service
+    
+    console.print(f"[bold blue]Parsing course from: {input_file}[/bold blue]")
+    
+    try:
+        # Read course data
+        with open(input_file, 'r') as f:
+            course_data = json.load(f)
+        
+        # Parse course
+        result = course_parser_service.parse_course_structure(
+            course_data=course_data,
+            output_dir=str(settings.exports_dir / "course_exports"),
+            org=org,
+            course_id=course_id,
+            url_name=url_name
+        )
+        
+        console.print(f"\n[bold green]✓ Course parsed successfully![/bold green]")
+        console.print(f"  Output: {result['tar_path']}")
+        console.print(f"  Chapters: {result['chapters']}")
+        console.print(f"  Sequentials: {result['sequentials']}")
+        console.print(f"  Verticals: {result['verticals']}")
+        
+    except FileNotFoundError:
+        console.print(f"[red]Error: Input file '{input_file}' not found[/red]")
+        raise typer.Exit(1)
+    except Exception as e:
+        console.print(f"[bold red]✗ Course parsing failed: {e}[/bold red]")
+        raise typer.Exit(1)
+
+
+# User analysis commands
+user_app = typer.Typer(help="User analysis commands")
+app.add_typer(user_app, name="users")
+
+
+@user_app.command("find-teachers")
+def find_teachers(
+    survey_ids: str = typer.Option(None, help="Comma-separated survey IDs"),
+    output: str = typer.Option(None, help="Output CSV file path")
+):
+    """Find users who identified as teachers in surveys."""
+    from src.models.database import SessionLocal
+    from src.analysis import user_analysis
+    
+    console.print("[bold blue]Finding teacher users...[/bold blue]")
+    
+    db = SessionLocal()
+    try:
+        survey_id_list = [s.strip() for s in survey_ids.split(',')] if survey_ids else None
+        
+        df = user_analysis.find_teacher_users(
+            db=db,
+            survey_ids=survey_id_list
+        )
+        
+        console.print(f"\n[bold green]✓ Found {len(df)} teacher users![/bold green]")
+        
+        if output:
+            df.to_csv(output, index=False)
+            console.print(f"  Results saved to: {output}")
+        else:
+            # Display first 10 rows
+            console.print("\nFirst 10 teachers:")
+            console.print(df.head(10).to_string())
+        
+    except Exception as e:
+        console.print(f"[bold red]✗ Teacher search failed: {e}[/bold red]")
+        raise typer.Exit(1)
+    finally:
+        db.close()
+
+
+# Dashboard command
+@app.command("dashboard")
+def run_dashboard(
+    port: int = typer.Option(8501, help="Port to run dashboard on"),
+    api_url: str = typer.Option("http://localhost:8000", help="API base URL")
+):
+    """Launch the Streamlit dashboard."""
+    import subprocess
+    import os
+    
+    console.print("[bold blue]Starting OpenHPI Dashboard...[/bold blue]")
+    console.print(f"  Dashboard will be available at: http://localhost:{port}")
+    console.print(f"  Connecting to API at: {api_url}")
+    
+    # Set environment variable for API URL
+    env = os.environ.copy()
+    env['API_BASE_URL'] = api_url
+    
+    try:
+        subprocess.run([
+            "streamlit", "run",
+            "src/dashboard.py",
+            "--server.port", str(port),
+            "--server.address", "0.0.0.0"
+        ], env=env)
+    except KeyboardInterrupt:
+        console.print("\n[yellow]Dashboard stopped[/yellow]")
+    except Exception as e:
+        console.print(f"[bold red]✗ Failed to start dashboard: {e}[/bold red]")
+        raise typer.Exit(1)
+
+
 if __name__ == "__main__":
     app()

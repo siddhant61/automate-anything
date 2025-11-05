@@ -3,13 +3,25 @@ API endpoints for course operations.
 """
 
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
+import json
+import tempfile
 
 from src.models.database import get_db
 from src.models.tables import Course, CourseStats
+from src.services.course_parser_service import course_parser_service
+from src.core.config import settings
 
 router = APIRouter()
+
+
+class CourseParseRequest(BaseModel):
+    """Request model for course parsing."""
+    org: str = "HPI"
+    course_id: str = "course"
+    url_name: str = "2024"
 
 
 @router.get("/")
@@ -174,3 +186,65 @@ async def list_categories(db: Session = Depends(get_db)):
         "count": len(categories),
         "categories": [cat[0] for cat in categories if cat[0]]
     }
+
+
+@router.post("/parse-edx")
+async def parse_edx_course(
+    file: UploadFile = File(..., description="JSON file with EdX course data"),
+    org: str = Query("HPI", description="Organization identifier"),
+    course_id: str = Query("course", description="Course identifier"),
+    url_name: str = Query("2024", description="URL name for the course")
+):
+    """
+    Parse EdX course data and generate OpenHPI-compatible structure.
+    
+    Args:
+        file: JSON file containing course data
+        org: Organization identifier
+        course_id: Course identifier
+        url_name: URL name for the course
+        
+    Returns:
+        Parsing results with generated file paths
+    """
+    try:
+        # Read uploaded file
+        content = await file.read()
+        course_data = json.loads(content)
+        
+        # Create temporary output directory
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Parse course structure
+            result = course_parser_service.parse_course_structure(
+                course_data=course_data,
+                output_dir=temp_dir,
+                org=org,
+                course_id=course_id,
+                url_name=url_name
+            )
+            
+            # Copy to exports directory
+            import shutil
+            final_output = settings.exports_dir / "course_exports"
+            final_output.mkdir(parents=True, exist_ok=True)
+            
+            tar_filename = f"{course_id}_{url_name}.tar.gz"
+            final_tar_path = final_output / tar_filename
+            
+            shutil.copy2(result['tar_path'], final_tar_path)
+            
+            return {
+                'success': True,
+                'message': 'Course parsed successfully',
+                'output_file': str(final_tar_path),
+                'statistics': {
+                    'chapters': result['chapters'],
+                    'sequentials': result['sequentials'],
+                    'verticals': result['verticals']
+                }
+            }
+    
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Invalid JSON file")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Course parsing failed: {str(e)}")
