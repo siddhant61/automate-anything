@@ -167,7 +167,7 @@ elif page == "📂 Source Manager":
     st.markdown("Manage your data sources and trigger scraping jobs.")
     
     # Tabs for different source operations
-    tab1, tab2 = st.tabs(["View Sources", "Add New Source"])
+    tab1, tab2, tab3 = st.tabs(["View Sources", "Add New Source", "View Processed Data"])
     
     with tab1:
         st.subheader("All Data Sources")
@@ -261,6 +261,88 @@ elif page == "📂 Source Manager":
                         st.error(f"Error: {e}")
                 else:
                     st.warning("Please fill in all required fields")
+    
+    with tab3:
+        st.subheader("View Processed Data")
+        
+        # Get sources for selection
+        try:
+            response = requests.get(f"{API_BASE_URL}/api/sources/", timeout=10)
+            if response.status_code == 200:
+                sources = response.json().get('sources', [])
+                
+                if sources:
+                    # Create a dropdown to select source
+                    source_names = {s['name']: s['id'] for s in sources}
+                    selected_name = st.selectbox("Select Source", list(source_names.keys()))
+                    selected_source_id = source_names[selected_name]
+                    
+                    if st.button("Load Processed Data"):
+                        with st.spinner("Loading processed data..."):
+                            try:
+                                response = requests.get(
+                                    f"{API_BASE_URL}/api/data/processed/{selected_source_id}",
+                                    timeout=30
+                                )
+                                if response.status_code == 200:
+                                    data = response.json()
+                                    processed_items = data.get('processed_data', [])
+                                    
+                                    if processed_items:
+                                        st.success(f"✓ Found {len(processed_items)} processed items")
+                                        
+                                        # Display as a table
+                                        df_data = []
+                                        for item in processed_items:
+                                            df_data.append({
+                                                'Title': item.get('title', 'N/A'),
+                                                'Sentiment Score': item.get('sentiment_score', 'N/A'),
+                                                'Sentiment': item.get('metadata', {}).get('sentiment', 'N/A') if item.get('metadata') else 'N/A',
+                                                'Module': item.get('processor_module', 'N/A'),
+                                                'Processed': item.get('processed_at', 'N/A')
+                                            })
+                                        
+                                        df = pd.DataFrame(df_data)
+                                        st.dataframe(df, use_container_width=True)
+                                        
+                                        # Show sentiment distribution if available
+                                        sentiment_scores = [item.get('sentiment_score') for item in processed_items if item.get('sentiment_score') is not None]
+                                        if sentiment_scores:
+                                            st.subheader("Sentiment Score Distribution")
+                                            fig = px.histogram(
+                                                x=sentiment_scores,
+                                                nbins=20,
+                                                title="Distribution of Sentiment Scores",
+                                                labels={'x': 'Sentiment Score', 'y': 'Count'}
+                                            )
+                                            fig.update_layout(
+                                                xaxis_range=[0, 1],
+                                                showlegend=False
+                                            )
+                                            st.plotly_chart(fig, use_container_width=True)
+                                        
+                                        # Show individual items in expandable sections
+                                        st.subheader("Individual Items")
+                                        for i, item in enumerate(processed_items[:20]):  # Show first 20
+                                            with st.expander(f"{i+1}. {item.get('title', 'Untitled')}"):
+                                                st.markdown(f"**Content:** {item.get('content_text', 'N/A')}")
+                                                st.markdown(f"**Summary:** {item.get('summary', 'N/A')}")
+                                                if item.get('sentiment_score') is not None:
+                                                    st.markdown(f"**Sentiment Score:** {item.get('sentiment_score'):.2f}")
+                                                if item.get('metadata'):
+                                                    st.json(item.get('metadata'))
+                                    else:
+                                        st.info("No processed data found for this source. Try scraping first.")
+                                else:
+                                    st.error(f"Failed to load data: {response.text}")
+                            except Exception as e:
+                                st.error(f"Error: {e}")
+                else:
+                    st.info("No sources available. Add a source first.")
+            else:
+                st.error("Could not load sources")
+        except Exception as e:
+            st.error(f"Error: {e}")
 
 
 # ================== OPENHPI ANALYTICS PAGE ==================

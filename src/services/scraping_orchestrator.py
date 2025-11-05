@@ -35,6 +35,13 @@ class ScrapingOrchestrator:
             logger.info("Registered OpenHPI public scraper")
         except ImportError as e:
             logger.warning(f"Could not register OpenHPI public scraper: {e}")
+        
+        try:
+            from src.modules.news_scraper.scraper import scrape_news
+            self.register_scraper('news_scraper', scrape_news)
+            logger.info("Registered News scraper")
+        except ImportError as e:
+            logger.warning(f"Could not register News scraper: {e}")
     
     def register_scraper(self, module_name: str, scraper_func: Callable):
         """

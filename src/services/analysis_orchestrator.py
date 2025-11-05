@@ -25,6 +25,16 @@ class AnalysisOrchestrator:
     def __init__(self):
         """Initialize the analysis orchestrator."""
         self._analyzers: Dict[str, Callable] = {}
+        self._register_default_analyzers()
+    
+    def _register_default_analyzers(self):
+        """Register default analyzers (built-in modules)."""
+        try:
+            from src.modules.news_scraper.analysis import analyze_headlines
+            self.register_analyzer('news_scraper', analyze_headlines)
+            logger.info("Registered News analyzer")
+        except ImportError as e:
+            logger.warning(f"Could not register News analyzer: {e}")
     
     def register_analyzer(self, module_name: str, analyzer_func: Callable):
         """
