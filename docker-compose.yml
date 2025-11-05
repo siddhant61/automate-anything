@@ -1,0 +1,130 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database (for production use)
+  db:
+    image: postgres:15-alpine
+    container_name: openhpi-db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-openhpi_automation}
+      POSTGRES_USER: ${POSTGRES_USER:-openhpi}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-openhpi}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - openhpi-network
+
+  # FastAPI Backend
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: openhpi-api
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # Database
+      DATABASE_URL: postgresql://${POSTGRES_USER:-openhpi}:${POSTGRES_PASSWORD:-changeme}@db:5432/${POSTGRES_DB:-openhpi_automation}
+      
+      # API Server
+      API_HOST: 0.0.0.0
+      API_PORT: 8000
+      API_WORKERS: ${API_WORKERS:-4}
+      
+      # Environment
+      ENV: ${ENV:-production}
+      DEBUG: ${DEBUG:-false}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      
+      # OpenHPI Credentials (from .env)
+      OPENHPI_USERNAME: ${OPENHPI_USERNAME}
+      OPENHPI_PASSWORD: ${OPENHPI_PASSWORD}
+      OPENHPI_BASE_URL: ${OPENHPI_BASE_URL:-https://open.hpi.de}
+      
+      # Helpdesk Credentials
+      HELPDESK_URL: ${HELPDESK_URL}
+      HELPDESK_USERNAME: ${HELPDESK_USERNAME}
+      HELPDESK_PASSWORD: ${HELPDESK_PASSWORD}
+      
+      # Google AI
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      
+      # Notifications
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      EMAIL_FROM: ${EMAIL_FROM}
+      EMAIL_TO: ${EMAIL_TO}
+    volumes:
+      - ./data:/app/data
+      - ./reports:/app/reports
+      - ./exports:/app/exports
+    ports:
+      - "${API_PORT:-8000}:8000"
+    command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --workers ${API_WORKERS:-4}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - openhpi-network
+    restart: unless-stopped
+
+  # Streamlit Dashboard
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: openhpi-dashboard
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      # API Connection
+      API_BASE_URL: http://api:8000
+      
+      # Database (for direct access if needed)
+      DATABASE_URL: postgresql://${POSTGRES_USER:-openhpi}:${POSTGRES_PASSWORD:-changeme}@db:5432/${POSTGRES_DB:-openhpi_automation}
+      
+      # Environment
+      ENV: ${ENV:-production}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      
+      # Google AI
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+    volumes:
+      - ./data:/app/data
+      - ./reports:/app/reports
+    ports:
+      - "${DASHBOARD_PORT:-8501}:8501"
+    command: streamlit run src/dashboard.py --server.port=8501 --server.address=0.0.0.0 --server.headless=true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - openhpi-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  openhpi-network:
+    driver: bridge
