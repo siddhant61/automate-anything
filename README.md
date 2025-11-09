@@ -133,9 +133,6 @@ Below are screenshots captured from a running local instance showcasing the plat
 
 ### Dashboard & UI
 
-![Dashboard Home](docs/images/01-dashboard-home.png)
-*Dashboard homepage with navigation sidebar and welcome screen*
-
 ![Analytics Page](docs/images/02-analytics-page.png)
 *Interactive analytics page with Plotly charts showing course metrics*
 
