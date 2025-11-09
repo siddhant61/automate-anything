@@ -3,8 +3,6 @@ Public (non-authenticated) scraper for OpenHPI platform.
 
 This module provides scraping functionality that does NOT require credentials.
 It scrapes publicly available data from the OpenHPI courses page.
-
-Based on the original openhpi-visualizer/scraper.py logic.
 """
 
 import logging
