@@ -52,7 +52,8 @@ class OpenHPIScraper:
         Returns:
             bool: True if login successful, False otherwise
         """
-        if not settings.openhpi_username or not settings.openhpi_password:
+        openhpi_password = settings.openhpi_password.get_secret_value() if settings.openhpi_password else ""
+        if not settings.openhpi_username or not openhpi_password:
             logger.error("OpenHPI credentials not configured")
             return False
         
@@ -69,7 +70,7 @@ class OpenHPIScraper:
             # Build login data
             login_data = {
                 'login': settings.openhpi_username,
-                'password': settings.openhpi_password,
+                'password': openhpi_password,
             }
             
             # Add any hidden form fields (CSRF tokens, etc.)

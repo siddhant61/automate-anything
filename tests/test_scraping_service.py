@@ -5,6 +5,7 @@ Tests for scraping service.
 import pytest
 from unittest.mock import Mock, patch, MagicMock
 from datetime import datetime
+from pydantic import SecretStr
 
 from src.services.scraping_service import (
     OpenHPIScraper,
@@ -31,7 +32,7 @@ def scraper(mock_db):
     with patch('src.services.scraping_service.settings') as mock_settings:
         mock_settings.openhpi_base_url = "https://open.hpi.de"
         mock_settings.openhpi_username = "test_user"
-        mock_settings.openhpi_password = "test_pass"
+        mock_settings.openhpi_password = SecretStr("test_pass")
         return OpenHPIScraper(mock_db)
 
 
@@ -53,7 +54,7 @@ class TestOpenHPIScraper:
     def test_login_no_credentials(self, mock_settings, mock_db):
         """Test login fails without credentials."""
         mock_settings.openhpi_username = None
-        mock_settings.openhpi_password = None
+        mock_settings.openhpi_password = SecretStr("")
         mock_settings.openhpi_base_url = "https://open.hpi.de"
         
         scraper = OpenHPIScraper(mock_db)
@@ -66,7 +67,7 @@ class TestOpenHPIScraper:
     def test_login_success(self, mock_settings, scraper):
         """Test successful login."""
         mock_settings.openhpi_username = "test_user"
-        mock_settings.openhpi_password = "test_pass"
+        mock_settings.openhpi_password = SecretStr("test_pass")
         
         # Mock the login page response with a form
         login_page_html = """
@@ -99,7 +100,7 @@ class TestOpenHPIScraper:
     def test_login_failure(self, mock_settings, scraper):
         """Test failed login."""
         mock_settings.openhpi_username = "test_user"
-        mock_settings.openhpi_password = "wrong_pass"
+        mock_settings.openhpi_password = SecretStr("wrong_pass")
         
         # Mock login page
         mock_response_login = Mock()
@@ -122,7 +123,7 @@ class TestOpenHPIScraper:
     def test_login_exception(self, mock_settings, scraper):
         """Test login handles exceptions."""
         mock_settings.openhpi_username = "test_user"
-        mock_settings.openhpi_password = "test_pass"
+        mock_settings.openhpi_password = SecretStr("test_pass")
         
         with patch.object(scraper.session, 'get', side_effect=Exception("Network error")):
             result = scraper.login()

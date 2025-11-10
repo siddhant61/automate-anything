@@ -4,6 +4,7 @@ Tests for AI service.
 
 import pytest
 from unittest.mock import Mock, patch, MagicMock
+from pydantic import SecretStr
 from src.services.ai_service import AIService, ai_service
 from src.models.tables import Course
 
@@ -14,14 +15,14 @@ class TestAIService:
     def test_ai_service_initialization_with_key(self):
         """Test AI service initializes correctly with API key."""
         with patch('src.services.ai_service.settings') as mock_settings:
-            mock_settings.google_api_key = "test_key"
+            mock_settings.google_api_key = SecretStr("test_key")
             service = AIService()
             assert service.enabled is True
     
     def test_ai_service_initialization_without_key(self):
         """Test AI service initializes correctly without API key."""
         with patch('src.services.ai_service.settings') as mock_settings:
-            mock_settings.google_api_key = ""
+            mock_settings.google_api_key = SecretStr("")
             service = AIService()
             assert service.enabled is False
     
@@ -214,7 +215,7 @@ class TestAIServiceIntegration:
     @patch('src.services.ai_service.settings')
     def test_service_respects_settings(self, mock_settings):
         """Test that service correctly uses settings."""
-        mock_settings.google_api_key = "test_key_123"
+        mock_settings.google_api_key = SecretStr("test_key_123")
         
         service = AIService()
         

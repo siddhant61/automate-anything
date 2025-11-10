@@ -30,7 +30,7 @@ def init():
     # Verify configuration
     console.print("✓ Configuration loaded", style="green")
     console.print(f"  Environment: {settings.env}", style="dim")
-    console.print(f"  Database: {settings.database_url}", style="dim")
+    console.print(f"  Database: {settings.get_database_url_safe()}", style="dim")
     
     console.print("\n[bold green]Initialization complete![/bold green]")
     console.print("\nNext steps:")
@@ -52,7 +52,7 @@ def config():
     table.add_row("Log Level", settings.log_level)
     table.add_row("API Host", settings.api_host)
     table.add_row("API Port", str(settings.api_port))
-    table.add_row("Database URL", settings.database_url)
+    table.add_row("Database URL", settings.get_database_url_safe())
     table.add_row("Data Directory", str(settings.data_dir))
     table.add_row("Reports Directory", str(settings.reports_dir))
     
