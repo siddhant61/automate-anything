@@ -96,7 +96,8 @@ class AutomationService:
             password_field = wait.until(
                 EC.presence_of_element_located((By.ID, "login_password"))
             )
-            password_field.send_keys(self.settings.openhpi_password)
+            openhpi_password = self.settings.openhpi_password.get_secret_value() if self.settings.openhpi_password else ""
+            password_field.send_keys(openhpi_password)
             
             # Click login button
             login_button = wait.until(
@@ -237,7 +238,8 @@ class AutomationService:
             password_field = wait.until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, "input[name='password']"))
             )
-            password_field.send_keys(self.settings.helpdesk_password)
+            helpdesk_password = self.settings.helpdesk_password.get_secret_value() if self.settings.helpdesk_password else ""
+            password_field.send_keys(helpdesk_password)
             
             # Click login button
             login_btn = driver.find_element(By.CLASS_NAME, "btn--primary")
@@ -317,7 +319,8 @@ class AutomationService:
             
             # Send notifications
             notification_sent = False
-            if self.settings.telegram_bot_token and self.settings.telegram_chat_id:
+            telegram_bot_token = self.settings.telegram_bot_token.get_secret_value() if self.settings.telegram_bot_token else ""
+            if telegram_bot_token and self.settings.telegram_chat_id:
                 notification_sent = asyncio.run(
                     self._send_telegram_notification(tickets_data, analysis)
                 )
@@ -401,7 +404,8 @@ class AutomationService:
             True if notification sent successfully
         """
         try:
-            bot = Bot(self.settings.telegram_bot_token)
+            telegram_bot_token = self.settings.telegram_bot_token.get_secret_value() if self.settings.telegram_bot_token else ""
+            bot = Bot(telegram_bot_token)
             
             message = f"""
 === Helpdesk Notification ===
@@ -470,7 +474,8 @@ Tickets by Owner:
             server = smtplib.SMTP(f"{self.settings.smtp_host}:{self.settings.smtp_port}")
             server.ehlo()
             server.starttls()
-            server.login(self.settings.smtp_username, self.settings.smtp_password)
+            smtp_password = self.settings.smtp_password.get_secret_value() if self.settings.smtp_password else ""
+            server.login(self.settings.smtp_username, smtp_password)
             server.sendmail(self.settings.email_from, self.settings.email_to, msg.as_string())
             server.quit()
             

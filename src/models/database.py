@@ -8,10 +8,11 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 from src.core.config import settings
 
 # Create database engine
+_db_url = settings.database_url.get_secret_value() if settings.database_url else "sqlite:///./openhpi_automation.db"
 engine = create_engine(
-    settings.database_url,
+    _db_url,
     echo=settings.debug,
-    connect_args={"check_same_thread": False} if settings.database_url.startswith("sqlite") else {}
+    connect_args={"check_same_thread": False} if _db_url.startswith("sqlite") else {}
 )
 
 # Create session factory

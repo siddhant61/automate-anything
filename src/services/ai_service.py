@@ -19,8 +19,9 @@ class AIService:
     
     def __init__(self):
         """Initialize AI service with Google API configuration."""
-        if settings.google_api_key:
-            genai.configure(api_key=settings.google_api_key)
+        google_api_key = settings.google_api_key.get_secret_value() if settings.google_api_key else ""
+        if google_api_key:
+            genai.configure(api_key=google_api_key)
             self.enabled = True
         else:
             self.enabled = False
